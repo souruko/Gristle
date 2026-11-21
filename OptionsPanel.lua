@@ -1,0 +1,726 @@
+---------------------------------------------------------------------------------------------------
+-- Sinew - the options panel
+---------------------------------------------------------------------------------------------------
+-- A ListBox of rows, each row a plain Control with hand-placed widgets, the same shape as
+-- VitalTarget's panel. Numbers use a stepper rather than a text box plus Apply button: a stepper
+-- cannot be left holding an invalid value, and every change is visible immediately.
+--
+-- Everything commits straight away - there is no Apply/Cancel. The bars are the preview.
+--
+-- What is handed to the Plugin Manager is a plain Control holding the ListBox and a scrollbar side
+-- by side, not the ListBox itself. The rows add up to far more than the manager will draw, and a
+-- ListBox simply clips what does not fit -- there is no "it grew too tall" to notice, the bottom of
+-- the panel is just quietly not there. The scrollbar cannot be a child of the ListBox either: a
+-- ListBox draws the items it was given and nothing else, so anything else parented to it never
+-- appears. Same arrangement as LootLogs/UI/Window/LootPopup.lua.
+---------------------------------------------------------------------------------------------------
+
+local PANEL_WIDTH  = 600
+local PANEL_HEIGHT = 700                              -- the viewport the manager gives us
+local SCROLL_WIDTH = 10
+local ROW_WIDTH    = PANEL_WIDTH - SCROLL_WIDTH       -- rows stop short of the bar, not under it
+local HINT_LEFT    = 320                              -- right-hand hint column
+local HINT_WIDTH   = ROW_WIDTH - HINT_LEFT
+local MARGIN       = 30
+
+local GOLD    = Turbine.UI.Color( 0.75, 0.58, 0.18 )
+local DIMGOLD = Turbine.UI.Color( 0.30, 0.22, 0.06 )
+local FIELD   = Turbine.UI.Color( 0.05, 0.05, 0.07 )  -- behind an editable text box
+
+local FONT_SECTION = Turbine.UI.Lotro.Font.BookAntiqua16
+local FONT_BODY    = Turbine.UI.Lotro.Font.BookAntiqua18
+local FONT_SMALL   = Turbine.UI.Lotro.Font.Verdana12
+local FONT_TITLE   = Turbine.UI.Lotro.Font.BookAntiqua36
+
+-- one shared swatch set for every colour row: white, the name row's off-white, the three morale
+-- bands, power blue, bubble cyan, a violet, and the near-black used for the track
+local SWATCHES = {
+	{ R = 1.00, G = 1.00, B = 1.00 },
+	{ R = 0.90, G = 0.87, B = 0.78 },
+	{ R = 0.22, G = 0.78, B = 0.35 },
+	{ R = 0.98, G = 0.76, B = 0.16 },
+	{ R = 0.92, G = 0.22, B = 0.20 },
+	{ R = 0.25, G = 0.60, B = 0.95 },
+	{ R = 0.45, G = 0.85, B = 1.00 },
+	{ R = 0.70, G = 0.35, B = 0.95 },
+	{ R = 0.07, G = 0.07, B = 0.09 },
+}
+
+---------------------------------------------------------------------------------------------------
+-- row primitives
+---------------------------------------------------------------------------------------------------
+
+local function Row( height )
+
+	local row = Turbine.UI.Control()
+	row:SetSize( ROW_WIDTH, height )
+
+	return row
+
+end
+
+local function SectionLabel( parent, text, top )
+
+	local label = Turbine.UI.Label()
+	label:SetParent( parent )
+	label:SetPosition( MARGIN, top or 0 )
+	label:SetSize( 400, 20 )
+	label:SetFont( FONT_SECTION )
+	label:SetForeColor( GOLD )
+	label:SetText( text )
+
+	return label
+
+end
+
+local function TextLabel( parent, text, left, top, width, font )
+
+	local label = Turbine.UI.Label()
+	label:SetParent( parent )
+	label:SetPosition( left, top )
+	label:SetSize( width, 20 )
+	label:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
+	label:SetFont( font or FONT_SMALL )
+	label:SetText( text )
+
+	return label
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- a stepper: [-] value [+]
+--
+-- decimals is the number of places to show; it also sets how the value is rounded, so a 0.05 step
+-- cannot drift into 0.15000000000000002
+--
+-- Normally it reads and writes SINEW.Settings[ key ] directly. Two hooks override that, for values
+-- that are not simply a number in the settings:
+--
+--   get     read the displayed value from somewhere else   ( window positions are stored as screen
+--                                                             ratios but have to be shown in pixels )
+--   nudge   handle the - / + press entirely, given a direction, and do its own saving
+---------------------------------------------------------------------------------------------------
+local function Stepper( parent, label, left, top, options )
+
+	TextLabel( parent, label, left, top, options.labelWidth or 150 )
+
+	local valueLeft = left + ( options.labelWidth or 150 )
+
+	local minus = Turbine.UI.Lotro.Button()
+	minus:SetParent( parent )
+	minus:SetPosition( valueLeft, top )
+	minus:SetSize( 24, 20 )
+	minus:SetText( "-" )
+
+	local value = Turbine.UI.Label()
+	value:SetParent( parent )
+	value:SetPosition( valueLeft + 26, top )
+	value:SetSize( 56, 20 )
+	value:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
+	value:SetFont( FONT_SMALL )
+
+	local plus = Turbine.UI.Lotro.Button()
+	plus:SetParent( parent )
+	plus:SetPosition( valueLeft + 84, top )
+	plus:SetSize( 24, 20 )
+	plus:SetText( "+" )
+
+	local decimals = options.decimals or 0
+
+	local function render()
+
+		local current
+
+		if options.get ~= nil then
+			current = tonumber( options.get() ) or 0
+		else
+			current = tonumber( SINEW.Settings[ options.key ] ) or 0
+		end
+
+		if decimals > 0 then
+			value:SetText( string.format( "%." .. decimals .. "f", current ) )
+		else
+			value:SetText( tostring( math.floor( current ) ) )
+		end
+
+	end
+
+	local function nudge( direction )
+
+		if options.nudge ~= nil then
+
+			-- owns the whole change, including saving it
+			options.nudge( direction )
+
+		else
+
+			SINEW.Settings[ options.key ] = SINEW.StepValue(
+				SINEW.Settings[ options.key ], direction, options.step,
+				options.min, options.max, decimals )
+
+			SINEW.Save()
+
+		end
+
+		if options.onChange ~= nil then
+			options.onChange()
+		else
+			SINEW.ApplyAll()
+		end
+
+		-- rendered last, so a value the change was clamped or mirrored into shows what actually
+		-- happened rather than what was asked for
+		render()
+
+	end
+
+	minus.Click = function() nudge( -1 ) end
+	plus.Click  = function() nudge(  1 ) end
+
+	render()
+
+	return render
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- a checkbox bound to a settings key
+---------------------------------------------------------------------------------------------------
+local function CheckBox( parent, label, left, top, key, onChange )
+
+	local box = Turbine.UI.Lotro.CheckBox()
+	box:SetParent( parent )
+	box:SetPosition( left, top )
+	box:SetSize( 420, 20 )
+	box:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
+	box:SetFont( FONT_BODY )
+	box:SetText( " " .. label )
+	box:SetChecked( SINEW.Settings[ key ] and true or false )
+
+	box.CheckedChanged = function()
+
+		SINEW.Settings[ key ] = box:IsChecked()
+
+		SINEW.Save()
+
+		if onChange ~= nil then
+			onChange()
+		else
+			SINEW.ApplyAll()
+		end
+
+	end
+
+	return box
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- a template row: a label and the two text boxes for one line's two ends
+---------------------------------------------------------------------------------------------------
+-- Commits on every keystroke, like every other widget in this panel - there is no Apply, the bars
+-- are the preview. A text box is the one widget here that could lose its value instead of merely
+-- showing a stale one, so waiting for the box to lose focus is not an option: the Plugin Manager can
+-- close the panel without FocusLost ever firing, and the line would be quietly thrown away.
+--
+-- ApplyFormats rather than ApplyAll, because relayouting both windows on every keystroke would clear
+-- the dirty-flag caches and blank the bars until the next vital event.
+---------------------------------------------------------------------------------------------------
+-- A plain Turbine.UI.TextBox inside a Control painted as its background, rather than
+-- Turbine.UI.Lotro.TextBox. That is the shape every working text field in this folder uses -
+-- LootLogs' searches, Basil's, Gibberish3's - and the bare TextBox draws no background of its own,
+-- so without the Control behind it there is nothing on screen to show the field is there.
+--
+-- Programmatic SetText does not fire TextChanged in the client, which is why the initial value below
+-- can be set before the handler without saving on every panel open.
+local function FormatRow( parent, label, top, leftKey, rightKey )
+
+	TextLabel( parent, label, MARGIN, top, 110 )
+
+	local function Box( left, key )
+
+		local back = Turbine.UI.Control()
+		back:SetParent( parent )
+		back:SetPosition( left, top )
+		back:SetSize( 200, 20 )
+		back:SetBackColor( FIELD )
+
+		local box = Turbine.UI.TextBox()
+		box:SetParent( back )
+		box:SetPosition( 3, 2 )
+		box:SetSize( 194, 16 )
+		box:SetMultiline( false )
+		box:SetFont( FONT_SMALL )
+		box:SetBackColor( FIELD )
+		box:SetForeColor( Turbine.UI.Color( 1, 1, 1 ) )
+		box:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
+		box:SetText( tostring( SINEW.Settings[ key ] or "" ) )
+
+		box.TextChanged = function()
+			SINEW.Settings[ key ] = box:GetText()
+			SINEW.Save()
+			SINEW.ApplyFormats()
+		end
+
+		return box
+
+	end
+
+	Box( MARGIN + 115, leftKey )
+	Box( MARGIN + 325, rightKey )
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- a colour row: current value, then the preset swatches
+---------------------------------------------------------------------------------------------------
+local function ColorRow( parent, label, top, key )
+
+	TextLabel( parent, label, MARGIN, top, 150 )
+
+	local preview = Turbine.UI.Control()
+	preview:SetParent( parent )
+	preview:SetPosition( MARGIN + 150, top )
+	preview:SetSize( 34, 20 )
+	preview:SetBackColor( SINEW.Color( SINEW.Settings[ key ] ) )
+
+	for i = 1, #SWATCHES do
+
+		local swatch = Turbine.UI.Control()
+		swatch:SetParent( parent )
+		swatch:SetPosition( MARGIN + 196 + ( i - 1 ) * 30, top )
+		swatch:SetSize( 26, 20 )
+		swatch:SetBackColor( SINEW.Color( SWATCHES[i] ) )
+		swatch:SetMouseVisible( true )
+
+		swatch.MouseDown = function( sender, args )
+
+			if args.Button ~= Turbine.UI.MouseButton.Left then return end
+
+			-- copied, so the settings never alias the shared SWATCHES table
+			SINEW.Settings[ key ] = SINEW.DeepCopy( SWATCHES[i] )
+
+			preview:SetBackColor( SINEW.Color( SINEW.Settings[ key ] ) )
+
+			SINEW.Save()
+			SINEW.ApplyAll()
+
+		end
+
+	end
+
+end
+
+---------------------------------------------------------------------------------------------------
+-- the panel
+---------------------------------------------------------------------------------------------------
+
+function SINEW.CreateOptionsPanel()
+
+	local panel = Turbine.UI.Control()
+	panel:SetSize( PANEL_WIDTH, PANEL_HEIGHT )
+
+	local list = Turbine.UI.ListBox()
+	list:SetParent( panel )
+	list:SetPosition( 0, 0 )
+	list:SetSize( ROW_WIDTH, PANEL_HEIGHT )
+
+	-- takes the mouse so the wheel scrolls it. A list you can only move by dragging the bar is half
+	-- a scrollbar, and this one is long enough that it matters.
+	list:SetMouseVisible( true )
+
+	local scroll = Turbine.UI.Lotro.ScrollBar()
+	scroll:SetParent( panel )
+	scroll:SetOrientation( Turbine.UI.Orientation.Vertical )
+	scroll:SetPosition( ROW_WIDTH, 0 )
+	scroll:SetSize( SCROLL_WIDTH, PANEL_HEIGHT )
+
+	list:SetVerticalScrollBar( scroll )
+
+	-- the rows live on the ListBox, not on the Control handed back, so the tests have to be able to
+	-- reach it to count them
+	panel.listBox = list
+
+	local function Divider()
+
+		local row = Row( 18 )
+
+		local line = Turbine.UI.Control()
+		line:SetParent( row )
+		line:SetPosition( MARGIN, 8 )
+		line:SetSize( ROW_WIDTH - 2 * MARGIN, 1 )
+		line:SetBackColor( DIMGOLD )
+
+		list:AddItem( row )
+
+	end
+
+	-----------------------------------------------------------------------------------------------
+	-- title
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 64 )
+
+		local title = Turbine.UI.Label()
+		title:SetParent( row )
+		title:SetSize( ROW_WIDTH, 50 )
+		title:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
+		title:SetFont( FONT_TITLE )
+		title:SetForeColor( GOLD )
+		title:SetText( "Sinew" )
+
+		local version = Turbine.UI.Label()
+		version:SetParent( row )
+		version:SetPosition( 0, 46 )
+		version:SetSize( ROW_WIDTH, 16 )
+		version:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
+		version:SetFont( FONT_SMALL )
+		-- deliberately names no skin: the companion skin has been renamed twice already, and a stale
+		-- name here is worse than no name
+		version:SetText( "v" .. SINEW.Version .. "  -  /sinew for the command list" )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- window
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 144 )
+
+		SectionLabel( row, "WINDOW" )
+
+		local moveBox = Turbine.UI.Lotro.CheckBox()
+		moveBox:SetParent( row )
+		moveBox:SetPosition( MARGIN, 24 )
+		moveBox:SetSize( 420, 20 )
+		moveBox:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
+		moveBox:SetFont( FONT_BODY )
+		moveBox:SetText( " Drag mode - both bars become movable" )
+		moveBox:SetChecked( MOVE )
+
+		moveBox.CheckedChanged = function()
+			SINEW.SetMoveMode( moveBox:IsChecked() )
+		end
+
+		CheckBox( row, "Show the player bars",  MARGIN, 48, "selfVisible", function()
+			SINEW.Self.window:SetShown( true )
+		end )
+
+		CheckBox( row, "Show the target bars",  MARGIN, 72, "targetVisible", function()
+			SINEW.Target.window:SetShown( SINEW.Target.entity ~= nil )
+		end )
+
+		-- a move, not a rebuild: ApplyAll would clear every bar's cache and blank them until the next
+		-- vital event, which on a quiet target could be a while
+		CheckBox( row, "Mirror the target bars across the screen", MARGIN, 96, "mirrorTarget", function()
+			SINEW.ApplyPositions()
+		end )
+
+		TextLabel( row, "its own saved position is then ignored - drag either frame and both move",
+			MARGIN + 24, 118, ROW_WIDTH - MARGIN - 24 )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- fine positioning
+	-----------------------------------------------------------------------------------------------
+	-- a drag lands wherever the mouse was released. Lining a frame up against a quickslot bar or
+	-- another plugin's window needs finer than that, so each axis gets a one-pixel step.
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 172 )
+
+		SectionLabel( row, "FINE POSITION" )
+
+		-- reads the window's real on-screen position rather than the setting, so the number shown is
+		-- what you see: the setting is a screen ratio, and it is ignored entirely while mirroring
+		local function Axis( window, label, top, axis )
+
+			Stepper( row, label, MARGIN, top, {
+
+				get = function()
+					if window() == nil then return 0 end
+					local left, winTop = window().window:GetPosition()
+					return axis == "x" and left or winTop
+				end,
+
+				nudge = function( direction )
+					if window() == nil then return end
+					if axis == "x" then
+						window():Nudge( direction, 0 )
+					else
+						window():Nudge( 0, direction )
+					end
+				end,
+
+				-- Nudge already moved, clamped, mirrored and saved; rebuilding the bars on top of
+				-- that would clear every dirty-flag cache for nothing
+				onChange = function() end,
+
+			} )
+
+		end
+
+		local function selfWindow()   return SINEW.Self.window end
+		local function targetWindow() return SINEW.Target.window end
+
+		TextLabel( row, "Player frame", MARGIN, 24, 150, FONT_BODY )
+		Axis( selfWindow, "    across",  48, "x" )
+		Axis( selfWindow, "    down",    72, "y" )
+
+		TextLabel( row, "Target frame", MARGIN, 100, 150, FONT_BODY )
+		Axis( targetWindow, "    across", 124, "x" )
+		Axis( targetWindow, "    down",   148, "y" )
+
+		TextLabel( row, "one pixel a press", HINT_LEFT, 48, HINT_WIDTH )
+		TextLabel( row, "mirrored, the target follows the player", HINT_LEFT, 124, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- player bar
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 172 )
+
+		SectionLabel( row, "PLAYER BAR" )
+
+		Stepper( row, "Width",            MARGIN, 26, { key = "selfWidth",       min = 40, max = 1200, step = 10 } )
+		Stepper( row, "Morale height",    MARGIN, 50, { key = "selfBarHeight",   min = 6,  max = 160,  step = 2 } )
+		Stepper( row, "Power height",     MARGIN, 74, { key = "selfPowerHeight", min = 1,  max = 60,   step = 1 } )
+		Stepper( row, "Gap",              MARGIN, 98, { key = "selfGap",         min = 0,  max = 40,   step = 1 } )
+
+		CheckBox( row, "Show the power hairline", MARGIN, 122, "selfShowPower" )
+		CheckBox( row, "Show your name above it", MARGIN, 146, "selfShowName" )
+
+		TextLabel( row, "the gap spaces the name, the bar and the hairline alike", HINT_LEFT, 98, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- target bar
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 172 )
+
+		SectionLabel( row, "TARGET BAR" )
+
+		Stepper( row, "Width",            MARGIN, 26, { key = "targetWidth",       min = 40, max = 1200, step = 10 } )
+		Stepper( row, "Morale height",    MARGIN, 50, { key = "targetBarHeight",   min = 6,  max = 160,  step = 2 } )
+		Stepper( row, "Power height",     MARGIN, 74, { key = "targetPowerHeight", min = 1,  max = 60,   step = 1 } )
+		Stepper( row, "Gap",              MARGIN, 98, { key = "targetGap",         min = 0,  max = 40,   step = 1 } )
+
+		CheckBox( row, "Show the power hairline",         MARGIN, 122, "targetShowPower" )
+		CheckBox( row, "Show the target's name above it", MARGIN, 146, "targetShowName" )
+
+		-- hints go beside a stepper, never beside a checkbox: a checkbox is 420 wide whatever its
+		-- text, so a label parked to its right lands on top of its hit region and eats the click
+		TextLabel( row, "the hairline hides itself for a target with no power", HINT_LEFT, 98, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- readouts
+	-----------------------------------------------------------------------------------------------
+	-- Four templates per frame rather than a checkbox per question. The tag names fit here; what
+	-- each one means does not, and there is no tooltip to put it in, so this points at
+	-- /sinew format for the rest.
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 344 )
+
+		SectionLabel( row, "READOUTS" )
+
+		TextLabel( row, "tags:  [cur]  [max]  [perc]  [deficit]  [temp]  [maxtemp]",
+			MARGIN, 24, ROW_WIDTH - 2 * MARGIN )
+		TextLabel( row, "          [pow]  [maxpow]  [powperc]  [name]  [level]",
+			MARGIN, 42, ROW_WIDTH - 2 * MARGIN )
+		TextLabel( row, "modifiers:  [cur:short] 12.5k    [cur:full] 12,480    [perc:1] one decimal",
+			MARGIN, 60, ROW_WIDTH - 2 * MARGIN )
+
+		FormatRow( row, "Player bar",   84, "selfFormatBarLeft",    "selfFormatBarRight" )
+		FormatRow( row, "Player name", 108, "selfFormatNameMain",   "selfFormatNameAside" )
+		FormatRow( row, "Target bar",  132, "targetFormatBarLeft",  "targetFormatBarRight" )
+		FormatRow( row, "Target name", 156, "targetFormatNameMain", "targetFormatNameAside" )
+
+		TextLabel( row, "the first box reads inward from the frame's own end - left on the player",
+			MARGIN, 180, ROW_WIDTH - 2 * MARGIN )
+		TextLabel( row, "clear a box to drop that readout.  /sinew format explains every tag",
+			MARGIN, 198, ROW_WIDTH - 2 * MARGIN )
+
+		-- only the rendered strings change, so this does not go through ApplyAll and rebuild both
+		-- windows to re-print four labels
+		CheckBox( row, "Abbreviate large numbers - 12.5k rather than 12,480", MARGIN, 222,
+			"abbreviateNumbers", function()
+				SINEW.ApplyFormats()
+			end )
+
+		CheckBox( row, "Bold the first box", MARGIN, 246, "boldValue" )
+
+		Stepper( row, "First box size",  MARGIN, 272, { key = "fontSize",        min = 8, max = 23, step = 2 } )
+		Stepper( row, "Second box size", MARGIN, 296, { key = "percentFontSize", min = 8, max = 23, step = 2 } )
+		Stepper( row, "Name row size",   MARGIN, 320, { key = "nameFontSize",    min = 8, max = 23, step = 2 } )
+
+		TextLabel( row, "and from the right on the target, name row and readouts alike",
+			HINT_LEFT, 272, HINT_WIDTH )
+		TextLabel( row, "the name row's height follows its own size", HINT_LEFT, 320, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- behaviour
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 196 )
+
+		SectionLabel( row, "BEHAVIOUR" )
+
+		CheckBox( row, "Draw a border",              MARGIN, 24, "showBorder" )
+		CheckBox( row, "Flash the morale just lost", MARGIN, 48, "flash" )
+
+		-- the one setting that decides whether the HUD takes the mouse at all, so the label says
+		-- what you get rather than naming the control
+		CheckBox( row, "Clickable frames - target, right-click menu, tooltip", MARGIN, 72,
+			"entityControl", function()
+				if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyEntity()   end
+				if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyEntity() end
+			end )
+
+		Stepper( row, "Flash length",   MARGIN, 96,  { key = "flashDuration", min = 0.05, max = 2.0, step = 0.05, decimals = 2 } )
+		Stepper( row, "Warn below %",   MARGIN, 120, { key = "warnPercent",   min = 2,    max = 99,  step = 5 } )
+		Stepper( row, "Danger below %", MARGIN, 144, { key = "dangerPercent", min = 1,    max = 98,  step = 5 } )
+
+		-- one value for both windows, in or out of combat. Only the opacity needs re-applying, so
+		-- this does not go through ApplyAll and rebuild both windows to change one number.
+		Stepper( row, "Opacity",        MARGIN, 168, { key = "opacity",       min = 0.05, max = 1.0, step = 0.05, decimals = 2,
+			onChange = function()
+				if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyOpacity()   end
+				if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyOpacity() end
+			end } )
+
+		TextLabel( row, "off makes the bars click-through again", HINT_LEFT, 96,  HINT_WIDTH )
+		TextLabel( row, "warn and danger are re-sorted if they cross", HINT_LEFT, 120, HINT_WIDTH )
+		TextLabel( row, "drag mode ignores it, so a faint HUD stays grabbable", HINT_LEFT, 168, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- colours
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 244 )
+
+		SectionLabel( row, "COLOURS" )
+
+		ColorRow( row, "Morale",            26,  "colorMorale" )
+		ColorRow( row, "Morale, warning",   50,  "colorMoraleWarn" )
+		ColorRow( row, "Morale, danger",    74,  "colorMoraleDanger" )
+		ColorRow( row, "Power",             98,  "colorPower" )
+		ColorRow( row, "Temporary morale",  122, "colorTemp" )
+		ColorRow( row, "Damage flash",      146, "colorFlash" )
+		ColorRow( row, "Empty / deficit",   170, "colorTrack" )
+		ColorRow( row, "Text",              194, "colorText" )
+		ColorRow( row, "Name row",          218, "colorName" )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- shared across characters
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 86 )
+
+		SectionLabel( row, "ALL CHARACTERS" )
+
+		local status = TextLabel( row, "", MARGIN, 58, 520 )
+
+		local function refreshStatus()
+			if SINEW.HasGlobalSettings() then
+				status:SetText( "A shared copy exists. Loading it replaces this character's settings." )
+			else
+				status:SetText( "No shared copy yet. Until there is one, every save also writes it." )
+			end
+		end
+
+		local saveButton = Turbine.UI.Lotro.Button()
+		saveButton:SetParent( row )
+		saveButton:SetPosition( MARGIN, 28 )
+		saveButton:SetSize( 180, 24 )
+		saveButton:SetText( "Save as shared" )
+
+		saveButton.Click = function()
+			SINEW.SaveGlobalSettings()
+			refreshStatus()
+			Turbine.Shell.WriteLine( "Sinew: settings saved as the shared copy." )
+		end
+
+		local loadButton = Turbine.UI.Lotro.Button()
+		loadButton:SetParent( row )
+		loadButton:SetPosition( MARGIN + 196, 28 )
+		loadButton:SetSize( 180, 24 )
+		loadButton:SetText( "Load shared" )
+
+		loadButton.Click = function()
+			if SINEW.LoadGlobalSettings() then
+				Turbine.Shell.WriteLine( "Sinew: shared settings loaded. Reopen this panel to refresh it." )
+			else
+				Turbine.Shell.WriteLine( "Sinew: there is no shared copy to load." )
+			end
+		end
+
+		refreshStatus()
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
+	-- reset
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 60 )
+
+		local reset = Turbine.UI.Lotro.Button()
+		reset:SetParent( row )
+		reset:SetPosition( MARGIN, 14 )
+		reset:SetSize( 180, 24 )
+		reset:SetText( "Reset to defaults" )
+
+		reset.Click = function()
+			SINEW.ResetSettings()
+			Turbine.Shell.WriteLine( "Sinew: settings reset. Reopen this panel to refresh it." )
+		end
+
+		TextLabel( row, "the panel's own widgets refresh when it is reopened", MARGIN + 196, 16, ROW_WIDTH - MARGIN - 196 )
+
+		list:AddItem( row )
+	end
+
+	return panel
+
+end

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+	Id / InfoUrl / DownloadUrl are placeholders until the plugin is published on
+	lotrointerface.com. Fill in the numeric id there and the two URLs follow.
+-->
+<PluginConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Id>0</Id>
+  <Name>Sinew</Name>
+  <Version>1.2.0</Version>
+  <Author>Souru</Author>
+  <InfoUrl></InfoUrl>
+  <DownloadUrl></DownloadUrl>
+  <Descriptors>
+    <descriptor>Sinew.plugin</descriptor>
+  </Descriptors>
+  <Dependencies />
+</PluginConfig>
