@@ -32,7 +32,7 @@ Skins live in `<Documents>/The Lord of the Rings Online/ui/skins/` and are selec
 it in that dropdown is the step that actually does anything — restarting on its own leaves you on
 the default skin, and a skin missing from the list failed to parse without the client saying so.
 
-**The companion skin is `EffectsOnly`** (`ui/skins/EffectsOnly/`, formerly `BlankVitals`). It
+**The companion skin is [`EffectsOnly`](https://github.com/souruko/EffectsOnly)** (`ui/skins/EffectsOnly/`, formerly `BlankVitals`). It
 removes everything on both stock plates — bars, numbers, names, portraits, level, rank icons and the
 animated rank flames on elite targets — and leaves only the buff and debuff trays, which keep their
 tooltips and their separate debuff row. So Gristle's bars are the only ones on screen. The skin's own
