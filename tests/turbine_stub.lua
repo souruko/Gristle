@@ -1,5 +1,5 @@
 --=================================================================================================
---= Just enough Turbine to load and drive the real Sinew source under a desktop Lua 5.1.
+--= Just enough Turbine to load and drive the real Gristle source under a desktop Lua 5.1.
 --=
 --= This is NOT loaded by the game. Nothing imports it from Main.lua, so tests/ is inert in the
 --= client. It cannot test drawing - it tests the arithmetic, the event plumbing, the dirty flags
@@ -107,13 +107,24 @@ local function NewControl( kind )
 	function c:SetOutlineColor( x ) self._outlineColor = x end
 	function c:GetOutlineColor()    return self._outlineColor end
 
-	function c:SetFont() end
+	function c:SetFont( f ) self._font = f end
+	function c:GetFont()    return self._font end
 	function c:SetFontStyle( s ) self._fontStyle = s end
 	function c:GetFontStyle()    return self._fontStyle end
 	function c:SetMultiline() end
 	function c:SetMarkupEnabled() end
-	function c:SetBackground() end
-	function c:SetStretchMode() end
+	-- recorded: the class icon is a background, and which one is set - and whether the stretch
+	-- sequence ran in the order that makes the engine scale it - is the whole of what can be checked
+	function c:SetBackground( b )      count( self, "SetBackground" ); self._background = b end
+	function c:GetBackground()         return self._background end
+	function c:SetStretchMode( m )
+		self._stretchLog = self._stretchLog or {}
+		table.insert( self._stretchLog, m )
+		self._stretch = m
+	end
+	function c:GetStretchMode()        return self._stretch end
+	function c:AttachEdges( l, t, r, b ) self._edges = { l, t, r, b } end
+	function c:GetEdges()              return self._edges end
 	function c:SetBackColorBlendMode() end
 	function c:SetBlendMode() end
 	function c:SetWantsKeyEvents() end
@@ -186,18 +197,20 @@ function stub.NewActor( options )
 	function a:GetTarget()               return self.target end
 	function a:GetParty()                return nil end
 
-	-- present on players and monsters, absent on objects; Sinew duck-types on these
+	-- present on players and monsters, absent on objects; Gristle duck-types on these
 	if options.kind ~= "object" then
 		function a:GetLevel() return options.level or 100 end
 	end
 
 	if options.kind == "player" then
 		function a:GetAlignment() return 1 end
+		-- on Player, not Actor: monsters and objects have no GetClass at all
+		function a:GetClass() return options.class end
 	end
 
 	---------------------------------------------------------------------------------------------------
 	-- fire an event the way the engine does, handling both a single handler and the table of
-	-- handlers that SINEW.AddCallback builds. If this ever stops matching the real dispatcher the
+	-- handlers that GRISTLE.AddCallback builds. If this ever stops matching the real dispatcher the
 	-- additive-callback scheme is broken, so it is deliberately exercised by every test.
 	---------------------------------------------------------------------------------------------------
 	function a:Fire( name )
@@ -268,9 +281,17 @@ function stub.Install( localPlayer, options )
 
 	local colorMeta = { __index = Color }
 
-	local function NewColor( r, g, b, a )
-		-- the engine's Color takes (r,g,b) or (a,r,g,b); Sinew only ever uses the three argument
-		-- form, and the metatable is what makes the euro converter leave it alone
+	local function NewColor( ... )
+		-- the engine's Color takes (r,g,b) or (a,r,g,b) - alpha comes FIRST in the four argument
+		-- form, which the sheen and the threshold ticks use. The metatable is what makes the euro
+		-- converter leave it alone.
+		local n = select( "#", ... )
+		local a, r, g, b
+		if n >= 4 then
+			a, r, g, b = ...
+		else
+			r, g, b = ...
+		end
 		local c = { R = r or 0, G = g or 0, B = b or 0, A = a or 1 }
 		return setmetatable( c, colorMeta )
 	end
@@ -309,7 +330,8 @@ function stub.Install( localPlayer, options )
 			LocalPlayer = {
 				GetInstance = function() return stub.localPlayer end,
 			},
-			Class = {},
+			-- the real enum's values, for the handful the tests name
+			Class = { Burglar = 40, Captain = 24, Guardian = 23, Minstrel = 31, Reaver = 71 },
 		},
 
 		UI = {
@@ -342,7 +364,7 @@ function stub.Install( localPlayer, options )
 				White = NewColor( 1, 1, 1 ),
 				Black = NewColor( 0, 0, 0 ),
 				Orange = NewColor( 1, 0.5, 0 ),
-			}, { __call = function( _, r, g, b, a ) return NewColor( r, g, b, a ) end } ),
+			}, { __call = function( _, ... ) return NewColor( ... ) end } ),
 
 			Display = { GetSize = function() return 1920, 1080 end },
 
@@ -358,6 +380,7 @@ function stub.Install( localPlayer, options )
 			FontStyle = { None = 0, Outline = 1, Shadow = 2 },
 
 			BlendMode = { AlphaBlend = 1, Overlay = 2 },
+			EdgeAttachmentType = { None = 0, Same = 1, Opposite = 2, Proportional = 3 },
 
 			Lotro = {
 				Font = setmetatable( {}, { __index = function( t, k ) return "font:" .. tostring( k ) end } ),
@@ -380,7 +403,7 @@ function stub.Install( localPlayer, options )
 
 	---------------------------------------------------------------------------------------------------
 	-- import: in the client each package directory gets its own environment and files inside one
-	-- directory share it. Sinew is a single flat directory, so the global environment is equivalent.
+	-- directory share it. Gristle is a single flat directory, so the global environment is equivalent.
 	---------------------------------------------------------------------------------------------------
 	import = function( path )
 
@@ -388,7 +411,7 @@ function stub.Install( localPlayer, options )
 			return
 		end
 
-		local file = string.gsub( path, "^Sinew%.", "" )
+		local file = string.gsub( path, "^Gristle%.", "" )
 		file = string.gsub( file, "%.", "/" ) .. ".lua"
 
 		local chunk, err = loadfile( file )

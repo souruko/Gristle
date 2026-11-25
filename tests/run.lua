@@ -1,9 +1,9 @@
 --=================================================================================================
---= Sinew tests
+--= Gristle tests
 --=
 --= Run from the plugin root with a desktop Lua (the game ships 5.1):
 --=
---=     cd Sinew && lua tests/run.lua
+--=     cd Gristle && lua tests/run.lua
 --=
 --= NOT loaded by the game -- nothing imports tests/ from Main.lua, so the folder is inert in the
 --= client. These cannot test drawing. They test the bar arithmetic, the bubble geometry, the
@@ -46,7 +46,7 @@ local stub = dofile( "tests/turbine_stub.lua" )
 local euro = ( ... ) == "euro" or arg ~= nil and arg[1] == "euro"
 
 local player = stub.NewActor( { name = "Souru", morale = 1000, maxMorale = 1000,
-                                power = 500, maxPower = 500, kind = "player" } )
+                                power = 500, maxPower = 500, kind = "player", class = 24 } )
 
 stub.Install( player, { euro = euro } )
 
@@ -56,7 +56,7 @@ print( euro and "=== German/French client ===" or "=== English client ===" )
 section( "load" )
 ---------------------------------------------------------------------------------------------------
 
-local ok, err = pcall( function() import( "Sinew.Main" ) end )
+local ok, err = pcall( function() import( "Gristle.Main" ) end )
 
 check( "Main.lua loads against the Turbine stub", ok, true )
 
@@ -66,46 +66,46 @@ if not ok then
 	os.exit( 1 )
 end
 
-check( "the self window was built",   SINEW.Self.window   ~= nil, true )
-check( "the target window was built", SINEW.Target.window ~= nil, true )
+check( "the self window was built",   GRISTLE.Self.window   ~= nil, true )
+check( "the target window was built", GRISTLE.Target.window ~= nil, true )
 check( "a load banner was printed",   #stub.lines > 0, true )
 
 ---------------------------------------------------------------------------------------------------
 section( "defaults and clamping" )
 ---------------------------------------------------------------------------------------------------
 
-check( "version stamped", SINEW.Settings.version, 4 )
-check( "self width defaulted", SINEW.Settings.selfWidth, 260 )
-check( "the target hairline is on by default", SINEW.Settings.targetShowPower, true )
+check( "version stamped", GRISTLE.Settings.version, 4 )
+check( "self width defaulted", GRISTLE.Settings.selfWidth, 260 )
+check( "the target hairline is on by default", GRISTLE.Settings.targetShowPower, true )
 check( "both name rows are on by default",
-	SINEW.Settings.selfShowName and SINEW.Settings.targetShowName, true )
+	GRISTLE.Settings.selfShowName and GRISTLE.Settings.targetShowName, true )
 check( "colours are plain tables, not Color instances",
-	getmetatable( SINEW.Settings.colorMorale ), nil )
+	getmetatable( GRISTLE.Settings.colorMorale ), nil )
 
 -- the settings must not alias the shared palette, or editing one would edit the other
-SINEW.Settings.colorMorale.R = 0.123
-check( "settings do not alias SINEW.Palette", SINEW.Palette.morale.R, 0.22 )
-SINEW.Settings.colorMorale.R = 0.22
+GRISTLE.Settings.colorMorale.R = 0.123
+check( "settings do not alias GRISTLE.Palette", GRISTLE.Palette.morale.R, 0.22 )
+GRISTLE.Settings.colorMorale.R = 0.22
 
 -- deliberately invalid values, as a hand-edited savefile could contain
-SINEW.Settings.selfWidth     = 0
-SINEW.Settings.selfBarHeight = "banana"
-SINEW.Settings.warnPercent   = 20
-SINEW.Settings.dangerPercent = 90
-SINEW.Settings.colorMorale   = "not a colour"
-SINEW.Settings.opacity       = 99
+GRISTLE.Settings.selfWidth     = 0
+GRISTLE.Settings.selfBarHeight = "banana"
+GRISTLE.Settings.warnPercent   = 20
+GRISTLE.Settings.dangerPercent = 90
+GRISTLE.Settings.colorMorale   = "not a colour"
+GRISTLE.Settings.opacity       = 99
 
-SINEW.NormaliseSettings()
+GRISTLE.NormaliseSettings()
 
-check( "a zero width is clamped up",        SINEW.Settings.selfWidth, 40 )
-check( "a non-numeric height falls back",   SINEW.Settings.selfBarHeight, 34 )
-check( "a broken colour falls back",        SINEW.Settings.colorMorale.G, 0.78 )
-check( "an over-range opacity is clamped",  SINEW.Settings.opacity, 1.0 )
-check( "danger is pushed below warn",       SINEW.Settings.dangerPercent < SINEW.Settings.warnPercent, true )
+check( "a zero width is clamped up",        GRISTLE.Settings.selfWidth, 40 )
+check( "a non-numeric height falls back",   GRISTLE.Settings.selfBarHeight, 34 )
+check( "a broken colour falls back",        GRISTLE.Settings.colorMorale.G, 0.78 )
+check( "an over-range opacity is clamped",  GRISTLE.Settings.opacity, 1.0 )
+check( "danger is pushed below warn",       GRISTLE.Settings.dangerPercent < GRISTLE.Settings.warnPercent, true )
 
-SINEW.Settings.nameFontSize = 99
-SINEW.NormaliseSettings()
-check( "an over-range name size is clamped", SINEW.Settings.nameFontSize, 23 )
+GRISTLE.Settings.nameFontSize = 99
+GRISTLE.NormaliseSettings()
+check( "an over-range name size is clamped", GRISTLE.Settings.nameFontSize, 23 )
 
 ---------------------------------------------------------------------------------------------------
 -- the 1 -> 2 migration
@@ -114,17 +114,17 @@ check( "an over-range name size is clamped", SINEW.Settings.nameFontSize, 23 )
 -- old value, so without the migration the target hairline would stay off forever on every existing
 -- character
 
-SINEW.Settings = { version = 1, targetShowPower = false, selfWidth = 300 }
-SINEW.NormaliseSettings()
+GRISTLE.Settings = { version = 1, targetShowPower = false, selfWidth = 300 }
+GRISTLE.NormaliseSettings()
 
-check( "a version 1 savefile has the target hairline turned on", SINEW.Settings.targetShowPower, true )
-check( "and is restamped",                                      SINEW.Settings.version, 4 )
-check( "while its own settings are left alone",                 SINEW.Settings.selfWidth, 300 )
+check( "a version 1 savefile has the target hairline turned on", GRISTLE.Settings.targetShowPower, true )
+check( "and is restamped",                                      GRISTLE.Settings.version, 4 )
+check( "while its own settings are left alone",                 GRISTLE.Settings.selfWidth, 300 )
 
 -- but a deliberate choice made since must survive the next load
-SINEW.Settings.targetShowPower = false
-SINEW.NormaliseSettings()
-check( "a current savefile is not migrated a second time", SINEW.Settings.targetShowPower, false )
+GRISTLE.Settings.targetShowPower = false
+GRISTLE.NormaliseSettings()
+check( "a current savefile is not migrated a second time", GRISTLE.Settings.targetShowPower, false )
 
 ---------------------------------------------------------------------------------------------------
 -- the 3 -> 4 migration
@@ -134,82 +134,82 @@ check( "a current savefile is not migrated a second time", SINEW.Settings.target
 -- template is the only way a readout is turned off now, so "it was off" is not expressible any
 -- other way.
 
-SINEW.Settings = { version = 3, showValue = true, showPercent = true, showLevel = true }
-SINEW.NormaliseSettings()
+GRISTLE.Settings = { version = 3, showValue = true, showPercent = true, showLevel = true }
+GRISTLE.NormaliseSettings()
 
 check( "a version 3 savefile keeps its absolute number",
-	SINEW.Settings.selfFormatBarLeft, "[cur]  [temp]" )
-check( "and its percentage",       SINEW.Settings.selfFormatBarRight, "[perc]" )
-check( "and its name",             SINEW.Settings.selfFormatNameMain, "[name]" )
-check( "and its level",            SINEW.Settings.selfFormatNameAside, "Level [level]" )
-check( "the target frame too",     SINEW.Settings.targetFormatBarRight, "[perc]" )
-check( "and the dead switches are gone", SINEW.Settings.showValue, nil )
+	GRISTLE.Settings.selfFormatBarLeft, "[cur]  [temp]" )
+check( "and its percentage",       GRISTLE.Settings.selfFormatBarRight, "[perc]" )
+check( "and its name",             GRISTLE.Settings.selfFormatNameMain, "[name]" )
+check( "and its level",            GRISTLE.Settings.selfFormatNameAside, "Level [level]" )
+check( "the target frame too",     GRISTLE.Settings.targetFormatBarRight, "[perc]" )
+check( "and the dead switches are gone", GRISTLE.Settings.showValue, nil )
 check( "all three of them",
-	SINEW.Settings.showPercent == nil and SINEW.Settings.showLevel == nil, true )
+	GRISTLE.Settings.showPercent == nil and GRISTLE.Settings.showLevel == nil, true )
 
 -- a switch that was off becomes a cleared template, not a defaulted one
-SINEW.Settings = { version = 3, showValue = false, showPercent = true, showLevel = false }
-SINEW.NormaliseSettings()
+GRISTLE.Settings = { version = 3, showValue = false, showPercent = true, showLevel = false }
+GRISTLE.NormaliseSettings()
 
 check( "a readout that was switched off comes through empty",
-	SINEW.Settings.selfFormatBarLeft, "" )
+	GRISTLE.Settings.selfFormatBarLeft, "" )
 check( "and a level that was switched off too",
-	SINEW.Settings.targetFormatNameAside, "" )
+	GRISTLE.Settings.targetFormatNameAside, "" )
 check( "while the one that was on is kept",
-	SINEW.Settings.selfFormatBarRight, "[perc]" )
+	GRISTLE.Settings.selfFormatBarRight, "[perc]" )
 
 -- and an emptied template must survive the next load rather than being refilled from the defaults
-SINEW.NormaliseSettings()
-check( "an empty template is not defaulted back", SINEW.Settings.selfFormatBarLeft, "" )
+GRISTLE.NormaliseSettings()
+check( "an empty template is not defaulted back", GRISTLE.Settings.selfFormatBarLeft, "" )
 
 ---------------------------------------------------------------------------------------------------
 -- a hand-edited or euro savefile
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Settings = {}
-SINEW.NormaliseSettings()
+GRISTLE.Settings = {}
+GRISTLE.NormaliseSettings()
 
 -- a German or French savefile turns anything that parses as a number back into one
-SINEW.Settings.selfFormatBarLeft = 100
-SINEW.NormaliseSettings()
-check( "a numeric template is coerced to a string", SINEW.Settings.selfFormatBarLeft, "100" )
+GRISTLE.Settings.selfFormatBarLeft = 100
+GRISTLE.NormaliseSettings()
+check( "a numeric template is coerced to a string", GRISTLE.Settings.selfFormatBarLeft, "100" )
 
-SINEW.Settings.selfFormatBarLeft = { "not a template" }
-SINEW.NormaliseSettings()
+GRISTLE.Settings.selfFormatBarLeft = { "not a template" }
+GRISTLE.NormaliseSettings()
 check( "a template that is not text falls back",
-	SINEW.Settings.selfFormatBarLeft, SINEW.Defaults.selfFormatBarLeft )
+	GRISTLE.Settings.selfFormatBarLeft, GRISTLE.Defaults.selfFormatBarLeft )
 
 -- the one setting with no natural upper bound. The bar clips what does not fit, so an enormous
 -- template would not be visible, only rendered.
-SINEW.Settings.selfFormatBarLeft = string.rep( "[cur]", 200 )
-SINEW.NormaliseSettings()
-check( "an absurd template is capped", string.len( SINEW.Settings.selfFormatBarLeft ), 120 )
+GRISTLE.Settings.selfFormatBarLeft = string.rep( "[cur]", 200 )
+GRISTLE.NormaliseSettings()
+check( "an absurd template is capped", string.len( GRISTLE.Settings.selfFormatBarLeft ), 120 )
 
-SINEW.Settings = {}
-SINEW.NormaliseSettings()
-SINEW.ApplyAll()
+GRISTLE.Settings = {}
+GRISTLE.NormaliseSettings()
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 section( "number formatting" )
 ---------------------------------------------------------------------------------------------------
 
-check( "zero",            SINEW.FormatNumber( 0 ),       "0" )
-check( "three digits",    SINEW.FormatNumber( 999 ),     "999" )
-check( "four digits",     SINEW.FormatNumber( 1000 ),    "1,000" )
-check( "five digits",     SINEW.FormatNumber( 12480 ),   "12,480" )
-check( "seven digits",    SINEW.FormatNumber( 1234567 ), "1,234,567" )
-check( "negative",        SINEW.FormatNumber( -1500 ),   "-1,500" )
-check( "fractional down", SINEW.FormatNumber( 1000.9 ),  "1,000" )
+check( "zero",            GRISTLE.FormatNumber( 0 ),       "0" )
+check( "three digits",    GRISTLE.FormatNumber( 999 ),     "999" )
+check( "four digits",     GRISTLE.FormatNumber( 1000 ),    "1,000" )
+check( "five digits",     GRISTLE.FormatNumber( 12480 ),   "12,480" )
+check( "seven digits",    GRISTLE.FormatNumber( 1234567 ), "1,234,567" )
+check( "negative",        GRISTLE.FormatNumber( -1500 ),   "-1,500" )
+check( "fractional down", GRISTLE.FormatNumber( 1000.9 ),  "1,000" )
 
-check( "percent",          SINEW.FormatPercent( 500, 1000 ), "50%" )
-check( "percent rounds",   SINEW.FormatPercent( 834, 1000 ), "83%" )
-check( "percent, zero max", SINEW.FormatPercent( 10, 0 ),    "0%" )
+check( "percent",          GRISTLE.FormatPercent( 500, 1000 ), "50%" )
+check( "percent rounds",   GRISTLE.FormatPercent( 834, 1000 ), "83%" )
+check( "percent, zero max", GRISTLE.FormatPercent( 10, 0 ),    "0%" )
 
-check( "percent, one decimal",  SINEW.FormatPercent( 743, 1000, 1 ), "74.3%" )
-check( "percent, two decimals", SINEW.FormatPercent( 743, 1000, 2 ), "74.30%" )
+check( "percent, one decimal",  GRISTLE.FormatPercent( 743, 1000, 1 ), "74.3%" )
+check( "percent, two decimals", GRISTLE.FormatPercent( 743, 1000, 2 ), "74.30%" )
 -- the decimal count comes out of a user-typed template, so [perc:9] has to land somewhere
-check( "percent, decimals clamped", SINEW.FormatPercent( 743, 1000, 9 ), "74.30%" )
-check( "percent, junk decimals",    SINEW.FormatPercent( 500, 1000, "x" ), "50%" )
+check( "percent, decimals clamped", GRISTLE.FormatPercent( 743, 1000, 9 ), "74.30%" )
+check( "percent, junk decimals",    GRISTLE.FormatPercent( 500, 1000, "x" ), "50%" )
 
 ---------------------------------------------------------------------------------------------------
 -- the abbreviated form
@@ -217,27 +217,27 @@ check( "percent, junk decimals",    SINEW.FormatPercent( 500, 1000, "x" ), "50%"
 -- The precision steps down as the number grows, and a trailing zero is dropped: 12.0k is not more
 -- precise than 12k, it only looks it.
 
-check( "short, below a thousand",   SINEW.FormatShort( 743 ),     "743" )
-check( "short, exactly a thousand", SINEW.FormatShort( 1000 ),    "1k" )
-check( "short, one decimal kept",   SINEW.FormatShort( 1500 ),    "1.5k" )
-check( "short, five digits",        SINEW.FormatShort( 12480 ),   "12.5k" )
-check( "short, trailing zero gone", SINEW.FormatShort( 12000 ),   "12k" )
-check( "short, decimal dropped at six digits", SINEW.FormatShort( 243200 ), "243k" )
-check( "short, millions",           SINEW.FormatShort( 1240000 ), "1.24M" )
-check( "short, a round million",    SINEW.FormatShort( 1000000 ), "1M" )
-check( "short, negative",           SINEW.FormatShort( -12480 ),  "-12.5k" )
-check( "short, zero",               SINEW.FormatShort( 0 ),       "0" )
+check( "short, below a thousand",   GRISTLE.FormatShort( 743 ),     "743" )
+check( "short, exactly a thousand", GRISTLE.FormatShort( 1000 ),    "1k" )
+check( "short, one decimal kept",   GRISTLE.FormatShort( 1500 ),    "1.5k" )
+check( "short, five digits",        GRISTLE.FormatShort( 12480 ),   "12.5k" )
+check( "short, trailing zero gone", GRISTLE.FormatShort( 12000 ),   "12k" )
+check( "short, decimal dropped at six digits", GRISTLE.FormatShort( 243200 ), "243k" )
+check( "short, millions",           GRISTLE.FormatShort( 1240000 ), "1.24M" )
+check( "short, a round million",    GRISTLE.FormatShort( 1000000 ), "1M" )
+check( "short, negative",           GRISTLE.FormatShort( -12480 ),  "-12.5k" )
+check( "short, zero",               GRISTLE.FormatShort( 0 ),       "0" )
 
 -- FormatValue is what a tag calls: the setting decides, unless the tag said otherwise
-SINEW.Settings.abbreviateNumbers = false
-check( "unabbreviated by default",   SINEW.FormatValue( 12480 ), "12,480" )
-check( "a tag can force the short form", SINEW.FormatValue( 12480, "short" ), "12.5k" )
+GRISTLE.Settings.abbreviateNumbers = false
+check( "unabbreviated by default",   GRISTLE.FormatValue( 12480 ), "12,480" )
+check( "a tag can force the short form", GRISTLE.FormatValue( 12480, "short" ), "12.5k" )
 
-SINEW.Settings.abbreviateNumbers = true
-check( "the setting abbreviates",    SINEW.FormatValue( 12480 ), "12.5k" )
-check( "a tag can force the long form", SINEW.FormatValue( 12480, "full" ), "12,480" )
+GRISTLE.Settings.abbreviateNumbers = true
+check( "the setting abbreviates",    GRISTLE.FormatValue( 12480 ), "12.5k" )
+check( "a tag can force the long form", GRISTLE.FormatValue( 12480, "full" ), "12,480" )
 
-SINEW.Settings.abbreviateNumbers = false
+GRISTLE.Settings.abbreviateNumbers = false
 
 ---------------------------------------------------------------------------------------------------
 section( "readout templates" )
@@ -250,7 +250,7 @@ local ctx = {
 	pow = 250, maxpow = 500, name = "Souru", level = 150,
 }
 
-local render = SINEW.Format.Render
+local render = GRISTLE.Format.Render
 
 check( "a bare tag",       render( "[cur]", ctx ),    "743" )
 check( "its maximum",      render( "[max]", ctx ),    "1,000" )
@@ -313,7 +313,7 @@ check( "a numeric template still renders", render( 100, ctx ), "100" )
 section( "morale bar arithmetic" )
 ---------------------------------------------------------------------------------------------------
 
-local selfWindow = SINEW.Self.window
+local selfWindow = GRISTLE.Self.window
 local bar = selfWindow.moraleBar
 
 check( "bar laid out at the configured width", bar.width, 260 )
@@ -384,9 +384,9 @@ local onScreen = stub.NewActor( { name = "Visible", morale = 50, maxMorale = 100
 player:SetTarget( onScreen )
 
 check( "the target's fill is on screen",
-	effectivelyVisible( SINEW.Target.window.moraleBar.fill ), true )
+	effectivelyVisible( GRISTLE.Target.window.moraleBar.fill ), true )
 check( "and its readout",
-	effectivelyVisible( SINEW.Target.window.moraleBar.valueLabel ), true )
+	effectivelyVisible( GRISTLE.Target.window.moraleBar.valueLabel ), true )
 
 player:SetTarget( nil )
 
@@ -413,14 +413,14 @@ check( "an unchanged value does not re-set the width",
 
 -- clearing a template is how a readout is turned off: there is no separate switch, because an empty
 -- template and a switched-off readout are the same thing
-SINEW.Settings.selfFormatBarLeft = ""
-SINEW.Settings.selfFormatBarRight = ""
+GRISTLE.Settings.selfFormatBarLeft = ""
+GRISTLE.Settings.selfFormatBarRight = ""
 player:SetMorale( 742 )
 check( "clearing a template drops that readout", bar.valueLabel:GetText(), "" )
 check( "and the other one with it",              bar.pctLabel:GetText(),   "" )
 
-SINEW.Settings.selfFormatBarLeft  = SINEW.Defaults.selfFormatBarLeft
-SINEW.Settings.selfFormatBarRight = SINEW.Defaults.selfFormatBarRight
+GRISTLE.Settings.selfFormatBarLeft  = GRISTLE.Defaults.selfFormatBarLeft
+GRISTLE.Settings.selfFormatBarRight = GRISTLE.Defaults.selfFormatBarRight
 player:SetMorale( 1000 )
 
 ---------------------------------------------------------------------------------------------------
@@ -433,40 +433,40 @@ player:SetMorale( 1000 )
 player:SetMorale( 743 )
 player:SetPowerValue( 250 )
 
-SINEW.Settings.selfFormatBarLeft  = "[cur]  [pow]"
-SINEW.Settings.selfFormatBarRight = "[powperc]"
-SINEW.ApplyFormats()
+GRISTLE.Settings.selfFormatBarLeft  = "[cur]  [pow]"
+GRISTLE.Settings.selfFormatBarRight = "[powperc]"
+GRISTLE.ApplyFormats()
 
 check( "power can be read inside the morale bar", bar.valueLabel:GetText(), "743  250" )
 check( "and as a percentage",                     bar.pctLabel:GetText(),   "50%" )
 
 -- and the other way round: a vital on the name row, which holds no data of its own
-SINEW.Settings.selfFormatNameMain  = "[name]"
-SINEW.Settings.selfFormatNameAside = "[perc]"
-SINEW.ApplyFormats()
+GRISTLE.Settings.selfFormatNameMain  = "[name]"
+GRISTLE.Settings.selfFormatNameAside = "[perc]"
+GRISTLE.ApplyFormats()
 
 check( "a vital can be read on the name row",
-	SINEW.Self.window.nameRow.extraLabel:GetText(), "74%" )
+	GRISTLE.Self.window.nameRow.extraLabel:GetText(), "74%" )
 
 -- a morale event has to reach the name row now that its template can name a vital
 player:SetMorale( 500 )
 check( "a morale change reaches the name row",
-	SINEW.Self.window.nameRow.extraLabel:GetText(), "50%" )
+	GRISTLE.Self.window.nameRow.extraLabel:GetText(), "50%" )
 
 -- a power event has to reach the morale bar for the same reason
 player:SetPowerValue( 125 )
 check( "a power change reaches the morale bar", bar.pctLabel:GetText(), "25%" )
 
 -- the hairline can be off while a template still names power
-SINEW.Settings.selfShowPower = false
-SINEW.ApplyAll()
+GRISTLE.Settings.selfShowPower = false
+GRISTLE.ApplyAll()
 player:SetPowerValue( 500 )
 check( "power still reads with the hairline switched off", bar.pctLabel:GetText(), "100%" )
 
-SINEW.Settings.selfShowPower = true
+GRISTLE.Settings.selfShowPower = true
 
 -- the deficit, in the place it is actually useful
-SINEW.Settings.selfFormatBarRight = "[deficit]"
+GRISTLE.Settings.selfFormatBarRight = "[deficit]"
 player:SetMorale( 1000 )
 check( "the deficit is blank at full morale", bar.pctLabel:GetText(), "" )
 
@@ -474,29 +474,29 @@ player:SetMorale( 743 )
 check( "and appears the moment something is missing", bar.pctLabel:GetText(), "-257" )
 
 -- the abbreviation setting reaches a live readout without a relayout
-SINEW.Settings.selfFormatBarLeft = "[cur]"
+GRISTLE.Settings.selfFormatBarLeft = "[cur]"
 player:SetMaxMorale( 20000 )
 player:SetMorale( 12480 )
 check( "unabbreviated to begin with", bar.valueLabel:GetText(), "12,480" )
 
-SINEW.Settings.abbreviateNumbers = true
-SINEW.ApplyFormats()
+GRISTLE.Settings.abbreviateNumbers = true
+GRISTLE.ApplyFormats()
 check( "abbreviating is live",        bar.valueLabel:GetText(), "12.5k" )
 
-SINEW.Settings.abbreviateNumbers = false
-SINEW.ApplyFormats()
+GRISTLE.Settings.abbreviateNumbers = false
+GRISTLE.ApplyFormats()
 check( "and reversible",              bar.valueLabel:GetText(), "12,480" )
 
 -- ApplyFormats must not do what ApplyAll does: a relayout clears every dirty-flag cache and blanks
 -- the bars until the next vital event, which for your own morale at full health is a long way off
 local fillBefore = bar.fill:GetWidth()
-SINEW.ApplyFormats()
+GRISTLE.ApplyFormats()
 check( "re-rendering does not disturb the fill", bar.fill:GetWidth(), fillBefore )
 
 -- and the dirty flag still holds through it
 local textBefore = stub.Counted( bar.valueLabel, "SetText" )
-SINEW.ApplyFormats()
-SINEW.ApplyFormats()
+GRISTLE.ApplyFormats()
+GRISTLE.ApplyFormats()
 check( "an unchanged render does not re-set the text",
 	stub.Counted( bar.valueLabel, "SetText" ), textBefore )
 
@@ -504,11 +504,11 @@ player:SetMaxMorale( 1000 )
 player:SetMorale( 1000 )
 player:SetPowerValue( 500 )
 
-SINEW.Settings.selfFormatBarLeft    = SINEW.Defaults.selfFormatBarLeft
-SINEW.Settings.selfFormatBarRight   = SINEW.Defaults.selfFormatBarRight
-SINEW.Settings.selfFormatNameMain   = SINEW.Defaults.selfFormatNameMain
-SINEW.Settings.selfFormatNameAside  = SINEW.Defaults.selfFormatNameAside
-SINEW.ApplyAll()
+GRISTLE.Settings.selfFormatBarLeft    = GRISTLE.Defaults.selfFormatBarLeft
+GRISTLE.Settings.selfFormatBarRight   = GRISTLE.Defaults.selfFormatBarRight
+GRISTLE.Settings.selfFormatNameMain   = GRISTLE.Defaults.selfFormatNameMain
+GRISTLE.Settings.selfFormatNameAside  = GRISTLE.Defaults.selfFormatNameAside
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 section( "temporary morale (bubble)" )
@@ -541,13 +541,13 @@ section( "threshold colouring" )
 ---------------------------------------------------------------------------------------------------
 
 player:SetMorale( 1000 )
-check( "healthy is the normal colour", bar.fill:GetBackColor().G, SINEW.Settings.colorMorale.G )
+check( "healthy is the normal colour", bar.fill:GetBackColor().G, GRISTLE.Settings.colorMorale.G )
 
 player:SetMorale( 400 )   -- below the 50% warn line
-check( "below warn is the warn colour", bar.fill:GetBackColor().G, SINEW.Settings.colorMoraleWarn.G )
+check( "below warn is the warn colour", bar.fill:GetBackColor().G, GRISTLE.Settings.colorMoraleWarn.G )
 
 player:SetMorale( 200 )   -- below the 25% danger line
-check( "below danger is the danger colour", bar.fill:GetBackColor().G, SINEW.Settings.colorMoraleDanger.G )
+check( "below danger is the danger colour", bar.fill:GetBackColor().G, GRISTLE.Settings.colorMoraleDanger.G )
 
 -- a band is applied once on entry, not on every update
 local colorBefore = stub.Counted( bar.fill, "SetBackColor" )
@@ -558,13 +558,13 @@ check( "staying in a band does not re-set the colour",
 	stub.Counted( bar.fill, "SetBackColor" ), colorBefore )
 
 player:SetMorale( 1000 )
-check( "recovering returns to the normal colour", bar.fill:GetBackColor().G, SINEW.Settings.colorMorale.G )
+check( "recovering returns to the normal colour", bar.fill:GetBackColor().G, GRISTLE.Settings.colorMorale.G )
 
 -- the power bar must never threshold-colour: running low on power is not an emergency
 local powerBar = selfWindow.powerBar
 player:SetPowerValue( 10 )
 check( "the power bar keeps its colour when low",
-	powerBar.fill:GetBackColor().B, SINEW.Settings.colorPower.B )
+	powerBar.fill:GetBackColor().B, GRISTLE.Settings.colorPower.B )
 player:SetPowerValue( 500 )
 
 ---------------------------------------------------------------------------------------------------
@@ -617,7 +617,7 @@ check( "overlapping hits each get a segment", visibleFlashes( bar ), 3 )
 player:SetMorale( 600 )
 player:SetMorale( 500 )
 player:SetMorale( 400 )
-check( "the pool caps at its size instead of erroring", visibleFlashes( bar ) <= SINEW.FlashPool, true )
+check( "the pool caps at its size instead of erroring", visibleFlashes( bar ) <= GRISTLE.FlashPool, true )
 
 -- a max morale change rescales the bar; that is not damage
 bar:Reset()
@@ -635,11 +635,11 @@ player:SetBubble( 0, 0 )
 
 -- and it can be turned off
 bar:Reset()
-SINEW.Settings.flash = false
+GRISTLE.Settings.flash = false
 player:SetMorale( 1000 )
 player:SetMorale( 500 )
 check( "the flash can be disabled", visibleFlashes( bar ), 0 )
-SINEW.Settings.flash = true
+GRISTLE.Settings.flash = true
 
 ---------------------------------------------------------------------------------------------------
 section( "power hairline" )
@@ -647,23 +647,23 @@ section( "power hairline" )
 
 player:SetPowerValue( 250 )
 check( "half power is half the hairline", powerBar.fill:GetWidth(), 130 )
-check( "the hairline is as thin as configured", powerBar.height, SINEW.Settings.selfPowerHeight )
+check( "the hairline is as thin as configured", powerBar.height, GRISTLE.Settings.selfPowerHeight )
 check( "the hairline carries no labels", powerBar.valueLabel, nil )
 check( "the hairline sits below the morale bar", powerBar.y > bar.y, true )
 
-SINEW.Settings.selfShowPower = false
-SINEW.ApplyAll()
+GRISTLE.Settings.selfShowPower = false
+GRISTLE.ApplyAll()
 check( "the hairline can be switched off", powerBar.track:IsVisible(), false )
 
-SINEW.Settings.selfShowPower = true
-SINEW.ApplyAll()
+GRISTLE.Settings.selfShowPower = true
+GRISTLE.ApplyAll()
 check( "and back on", powerBar.track:IsVisible(), true )
 
 ---------------------------------------------------------------------------------------------------
 section( "target tracking" )
 ---------------------------------------------------------------------------------------------------
 
-local targetWindow = SINEW.Target.window
+local targetWindow = GRISTLE.Target.window
 
 check( "no target means a hidden window", targetWindow.window:IsVisible(), false )
 
@@ -678,6 +678,46 @@ check( "and reads out the percentage",         targetWindow.moraleBar.pctLabel:G
 orc:SetMorale( 5000 )
 check( "the target's morale is tracked live", targetWindow.moraleBar.fill:GetWidth(), 130 )
 
+-- the target frame is the player's reflected: its bar fills from the right and drains towards it
+do
+	local tbar = targetWindow.moraleBar
+
+	check( "the target's fill hugs the right-hand end",
+		tbar.fill:GetLeft() + tbar.fill:GetWidth(), tbar.width )
+	check( "the player's fill still starts at the left", bar.fill:GetLeft(), 0 )
+
+	local before = tbar.fill:GetLeft()
+	orc:SetMorale( 2500 )
+
+	local hit = nil
+	for i = 1, #tbar.flashes do
+		if tbar.flashes[i].control:IsVisible() then hit = tbar.flashes[i].control end
+	end
+
+	check( "the target's flash is the strip just lost, on the left of the fill",
+		hit ~= nil and hit:GetLeft(), before )
+	check( "and ends where the fill now begins",
+		hit ~= nil and hit:GetLeft() + hit:GetWidth(), tbar.fill:GetLeft() )
+
+	local warnTick = tbar.ticks[1].control
+	check( "the warn mark is measured from the right",
+		warnTick:GetLeft(), tbar.width - 1 - math.floor( tbar.width * GRISTLE.Settings.warnPercent / 100 ) )
+
+	-- the bubble sits at the far end from where the fill starts: the left
+	orc:SetBubble( 2500, 2500 )
+	check( "the target's bubble shows",         tbar.temp:IsVisible(), true )
+	check( "and is parked at the left-hand end", tbar.temp:GetLeft(), 0 )
+	check( "and fills the quarter the morale gave up", tbar.temp:GetWidth(), tbar.width - tbar._lastBarWidth )
+
+	-- half spent: from the right, the bubble still has to touch the morale slice, so its left edge moves
+	orc:SetBubble( 1250, 2500 )
+	check( "a half-spent bubble still meets the morale slice",
+		tbar.temp:GetLeft() + tbar.temp:GetWidth(), tbar.width - tbar._lastBarWidth )
+
+	orc:SetBubble( 0, 0 )
+	orc:SetMorale( 5000 )
+end
+
 -- a chest has no GetMorale at all. The frame stays up with its name over an empty background --
 -- what you have selected is worth seeing -- but there is nothing to report inside it.
 local chest = stub.NewActor( { name = "Chest", kind = "object" } )
@@ -691,12 +731,14 @@ check( "and shows its name",                  targetWindow.nameRow.nameLabel:Get
 check( "the background is still drawn",       targetWindow.moraleBar.track:IsVisible(), true )
 check( "but the fill is not",                 targetWindow.moraleBar.clip:IsVisible(), false )
 check( "nor the readout",                     targetWindow.moraleBar.labelBack:IsVisible(), false )
-check( "nor the power hairline",              targetWindow.powerBar.track:IsVisible(), false )
+-- both bars go blank together, so an object shows the same empty two-bar frame a creature does
+check( "the power background is drawn too",   targetWindow.powerBar.track:IsVisible(), true )
+check( "but the power has no fill",           targetWindow.powerBar.clip:IsVisible(), false )
 check( "an object has no level to show",      targetWindow.nameRow.extraLabel:GetText(), "" )
 
 -- and the old target must have been let go
 orc:SetMorale( 1 )
-check( "the dropped target no longer drives the bar", SINEW.Target.entity, chest )
+check( "the dropped target no longer drives the bar", GRISTLE.Target.entity, chest )
 check( "and its handlers are gone",                   orc.MoraleChanged, nil )
 
 -- targeting something with vitals again brings the bar straight back
@@ -706,6 +748,8 @@ check( "the fill comes back",    targetWindow.moraleBar.clip:IsVisible(), true )
 check( "the readout comes back", targetWindow.moraleBar.labelBack:IsVisible(), true )
 check( "and it is filled",       targetWindow.moraleBar.fill:GetWidth(), 130 )
 check( "with its readout",       targetWindow.moraleBar.pctLabel:GetText(), "50%" )
+check( "the power fill comes back too", targetWindow.powerBar.clip:IsVisible(), true )
+check( "and it is filled",              targetWindow.powerBar.fill:GetWidth(), 260 )
 
 ---------------------------------------------------------------------------------------------------
 -- the two frames have their own templates
@@ -714,9 +758,9 @@ check( "with its readout",       targetWindow.moraleBar.pctLabel:GetText(), "50%
 -- and a target's is usually only a percentage, and that is the one question the three switches these
 -- replaced could not answer.
 
-SINEW.Settings.targetFormatBarLeft  = "[perc]"
-SINEW.Settings.targetFormatBarRight = "[cur] / [max]"
-SINEW.ApplyFormats()
+GRISTLE.Settings.targetFormatBarLeft  = "[perc]"
+GRISTLE.Settings.targetFormatBarRight = "[cur] / [max]"
+GRISTLE.ApplyFormats()
 
 check( "the target bar uses its own templates",
 	targetWindow.moraleBar.valueLabel:GetText(), "50%" )
@@ -725,7 +769,7 @@ check( "both of them",
 -- tested by shape rather than by value: the player's morale at this point in the suite is whatever
 -- the sections above left it at, and what matters is that it is still rendering its own template
 check( "and the player bar did not take the target's percentage",
-	string.find( SINEW.Self.window.moraleBar.valueLabel:GetText(), "%%" ), nil )
+	string.find( GRISTLE.Self.window.moraleBar.valueLabel:GetText(), "%%" ), nil )
 
 ---------------------------------------------------------------------------------------------------
 -- a target swap cannot leave the old one's numbers on screen
@@ -751,9 +795,9 @@ check( "but it does report its name",                            targetWindow.co
 
 player:SetTarget( orc )
 
-SINEW.Settings.targetFormatBarLeft  = SINEW.Defaults.targetFormatBarLeft
-SINEW.Settings.targetFormatBarRight = SINEW.Defaults.targetFormatBarRight
-SINEW.ApplyFormats()
+GRISTLE.Settings.targetFormatBarLeft  = GRISTLE.Defaults.targetFormatBarLeft
+GRISTLE.Settings.targetFormatBarRight = GRISTLE.Defaults.targetFormatBarRight
+GRISTLE.ApplyFormats()
 
 player:SetTarget( nil )
 check( "clearing the target hides the window", targetWindow.window:IsVisible(), false )
@@ -765,7 +809,7 @@ local b = stub.NewActor( { name = "B", morale = 50,  maxMorale = 100, kind = "mo
 player:SetTarget( a )
 player:SetTarget( b )
 
-check( "the new target is attached", SINEW.Target.entity, b )
+check( "the new target is attached", GRISTLE.Target.entity, b )
 check( "the old target was detached", a.MoraleChanged, nil )
 check( "the bar shows the new target", targetWindow.moraleBar.fill:GetWidth(), 130 )
 
@@ -790,7 +834,7 @@ player:SetTarget( caster )
 
 check( "a target with power shows the hairline", targetPower.track:IsVisible(), true )
 check( "and fills it to its power",              targetPower.fill:GetWidth(), 130 )
-check( "the hairline is as thin as configured",  targetPower.height, SINEW.Settings.targetPowerHeight )
+check( "the hairline is as thin as configured",  targetPower.height, GRISTLE.Settings.targetPowerHeight )
 
 caster:SetPowerValue( 600 )
 check( "the target's power is tracked live", targetPower.fill:GetWidth(), 260 )
@@ -818,13 +862,24 @@ local husk = stub.NewActor( { name = "Husk", morale = 500, maxMorale = 500,
 player:SetTarget( husk )
 check( "a zero max power counts as no power", targetPower.track:IsVisible(), false )
 
-SINEW.Settings.targetShowPower = false
-SINEW.ApplyAll()
+-- from an object, whose empty frame shows both tracks, to a creature with no power: the power
+-- track must still go. SetPower decides from the real reading, not from the blank frame.
+local crate = stub.NewActor( { name = "Crate", kind = "object" } )
+crate.GetMorale = nil
+crate.GetMaxMorale = nil
+player:SetTarget( crate )
+check( "an object shows the empty power track", targetPower.track:IsVisible(), true )
+player:SetTarget( bear )
+check( "a powerless creature after it drops the track", targetPower.track:IsVisible(), false )
+check( "and keeps its morale",                          targetWindow.moraleBar.clip:IsVisible(), true )
+
+GRISTLE.Settings.targetShowPower = false
+GRISTLE.ApplyAll()
 player:SetTarget( caster )
 check( "the setting still wins over an available power", targetPower.track:IsVisible(), false )
 
-SINEW.Settings.targetShowPower = true
-SINEW.ApplyAll()
+GRISTLE.Settings.targetShowPower = true
+GRISTLE.ApplyAll()
 check( "and turning it back on restores the hairline", targetPower.track:IsVisible(), true )
 
 player:SetTarget( nil )
@@ -839,49 +894,78 @@ check( "the player's name is on the row",  selfName.nameLabel:GetText(), "Souru"
 check( "and their level beside it",        selfName.extraLabel:GetText(), "Level 100" )
 
 -- the row is a text row, so its height follows its own font rather than a setting of its own
-check( "the row height follows the name font", SINEW.NameHeight(), SINEW.Settings.nameFontSize + 4 )
+check( "the row height follows the name font", GRISTLE.NameHeight(), GRISTLE.Settings.nameFontSize + 4 )
 
 -- and it pushes the bars down rather than lifting itself above where they already were
 check( "the morale bar sits below the row",
-	bar.y, SINEW.NameHeight() + SINEW.Settings.selfGap )
+	bar.y, GRISTLE.NameRowHeight( "selfShowClassIcon" ) + GRISTLE.Settings.selfGap )
+
+-- gap 0 shares one border line between morale and power instead of drawing two side by side
+do
+	local savedGap, savedBorder = GRISTLE.Settings.selfGap, GRISTLE.Settings.showBorder
+	local power = selfWindow.powerBar
+
+	GRISTLE.Settings.showBorder = true
+	GRISTLE.Settings.selfGap = 0
+	GRISTLE.ApplyAll()
+	check( "at gap 0 the power bar's top border overlays the morale bar's bottom border",
+		power.y, bar.y + bar.height + GRISTLE.Border )
+	local _, windowHeight = selfWindow.window:GetSize()
+	check( "and the window is one border shorter for it",
+		windowHeight, power.y + power.height + 2 * GRISTLE.Border )
+
+	GRISTLE.Settings.selfGap = 3
+	GRISTLE.ApplyAll()
+	check( "a non-zero gap still separates the two borders",
+		power.y, bar.y + bar.height + 2 * GRISTLE.Border + 3 )
+
+	GRISTLE.Settings.showBorder = false
+	GRISTLE.Settings.selfGap = 0
+	GRISTLE.ApplyAll()
+	check( "without a border, gap 0 butts the bars together",
+		power.y, bar.y + bar.height )
+
+	GRISTLE.Settings.selfGap, GRISTLE.Settings.showBorder = savedGap, savedBorder
+	GRISTLE.ApplyAll()
+end
 
 -- clipped, not wrapped: a name longer than the bar is cut off at the end of the bar
 check( "the row is clipped to the bar's width",
-	selfName.clip:GetWidth(), SINEW.Settings.selfWidth - 2 * SINEW.LabelPadding )
+	selfName.clip:GetWidth(), GRISTLE.Settings.selfWidth - 2 * GRISTLE.LabelPadding )
 
 -- the dirty flag, as everywhere else
 local nameBefore = stub.Counted( selfName.nameLabel, "SetText" )
-SINEW.Self.RefreshName()
-SINEW.Self.RefreshName()
+GRISTLE.Self.RefreshName()
+GRISTLE.Self.RefreshName()
 check( "an unchanged name does not re-set the text",
 	stub.Counted( selfName.nameLabel, "SetText" ), nameBefore )
 
-SINEW.Settings.selfFormatNameAside = ""
-SINEW.Self.RefreshName()
+GRISTLE.Settings.selfFormatNameAside = ""
+GRISTLE.Self.RefreshName()
 check( "clearing the aside template drops the level", selfName.extraLabel:GetText(), "" )
 
--- and the word in front of the number is the player's, which is the one bit of localisation Sinew
+-- and the word in front of the number is the player's, which is the one bit of localisation Gristle
 -- needs: a German client wants "Stufe 150"
-SINEW.Settings.selfFormatNameAside = "Stufe [level]"
-SINEW.Self.RefreshName()
+GRISTLE.Settings.selfFormatNameAside = "Stufe [level]"
+GRISTLE.Self.RefreshName()
 check( "the label beside the level is the template's", selfName.extraLabel:GetText(), "Stufe 100" )
 
-SINEW.Settings.selfFormatNameAside = SINEW.Defaults.selfFormatNameAside
-SINEW.Self.RefreshName()
+GRISTLE.Settings.selfFormatNameAside = GRISTLE.Defaults.selfFormatNameAside
+GRISTLE.Self.RefreshName()
 check( "and back on", selfName.extraLabel:GetText(), "Level 100" )
 
-SINEW.Settings.selfShowName = false
-SINEW.ApplyAll()
+GRISTLE.Settings.selfShowName = false
+GRISTLE.ApplyAll()
 
 check( "the row can be switched off",            selfName.clip:IsVisible(), false )
 check( "and the morale bar takes the top back",  bar.y, 0 )
 
-SINEW.Settings.selfShowName = true
-SINEW.ApplyAll()
+GRISTLE.Settings.selfShowName = true
+GRISTLE.ApplyAll()
 check( "and switched back on", selfName.clip:IsVisible(), true )
 check( "the name survives a relayout", selfName.nameLabel:GetText(), "Souru" )
 
--- the row has to be click-through like everything else Sinew draws
+-- the row has to be click-through like everything else Gristle draws
 check( "the row is click-through",  selfName.clip:IsMouseVisible(), false )
 check( "the name label too",        selfName.nameLabel:IsMouseVisible(), false )
 check( "the level label too",       selfName.extraLabel:IsMouseVisible(), false )
@@ -938,10 +1022,188 @@ unnamed.GetName = nil
 player:SetTarget( unnamed )
 check( "a nameless target reads as empty, not nil", targetName.nameLabel:GetText(), "" )
 
-check( "ReadName of nil is an empty string", SINEW.ReadName( nil ), "" )
-check( "ReadLevel of nil is nil",            SINEW.ReadLevel( nil ), nil )
+check( "ReadName of nil is an empty string", GRISTLE.ReadName( nil ), "" )
+check( "ReadLevel of nil is nil",            GRISTLE.ReadLevel( nil ), nil )
 
 player:SetTarget( nil )
+
+---------------------------------------------------------------------------------------------------
+section( "class icons" )
+---------------------------------------------------------------------------------------------------
+
+local Class = Turbine.Gameplay.Class
+
+check( "a known class has an emblem",            GRISTLE.ClassIcons[ Class.Captain ], 0x41007DE7 )
+check( "a creep class has one too",              GRISTLE.ClassIcons[ Class.Reaver ],  0x41007DED )
+-- the stub's enum names five classes and has no Hunter: a class the client does not know must be
+-- skipped at load, not turned into a nil key that throws
+do
+	local n = 0
+	for _ in pairs( GRISTLE.ClassIcons ) do n = n + 1 end
+	check( "only classes the client knows get an entry", n, 5 )
+end
+
+check( "ReadClass of nil is nil",                GRISTLE.ReadClass( nil ), nil )
+check( "ReadClass of the player",                GRISTLE.ReadClass( player ), Class.Captain )
+
+local selfIcon = selfName.icon
+local ICON = GRISTLE.ClassIconSize
+local border = GRISTLE.Settings.showBorder and GRISTLE.Border or 0
+
+GRISTLE.Self.RefreshName()
+check( "the player's class icon is shown",       selfIcon:IsVisible(), true )
+check( "and it is the captain emblem",           selfIcon:GetBackground(), 0x41007DE7 )
+check( "it is drawn at the art's own size",      selfIcon:GetWidth(), ICON )
+check( "and as tall",                            selfIcon:GetHeight(), ICON )
+check( "it is click-through",                    selfIcon:IsMouseVisible(), false )
+
+-- scaling was tried in game and drew the emblem tiled through the clip: no stretch mode, no edge
+-- attachments, and not inside the clip window
+check( "no stretch mode is ever set",            selfIcon:GetStretchMode(), nil )
+check( "no edge attachments",                    selfIcon:GetEdges(), nil )
+check( "the icon is not inside the clip",        selfIcon:GetParent() ~= selfName.clip, true )
+
+-- the row is grown to the icon rather than the icon shrunk to the row
+check( "the row is at least as tall as the icon",
+	GRISTLE.NameRowHeight( "selfShowClassIcon" ), math.max( GRISTLE.NameHeight(), ICON ) )
+check( "the morale bar sits below the taller row",
+	bar.y, GRISTLE.NameRowHeight( "selfShowClassIcon" ) + GRISTLE.Settings.selfGap )
+
+-- on the player frame the icon is at the left end, where the name would start, and the name after it
+check( "the icon sits where the name used to start",
+	selfIcon:GetLeft(), selfName.clip:GetLeft() )
+check( "centred down the row",
+	selfIcon:GetTop(), math.floor( ( GRISTLE.NameRowHeight( "selfShowClassIcon" ) - ICON ) / 2 ) )
+check( "the name is pushed past it",             selfName.nameLabel:GetLeft(), ICON + GRISTLE.ClassIconGap )
+check( "and loses that much width",
+	selfName.nameLabel:GetWidth(), selfName.clip:GetWidth() - ICON - GRISTLE.ClassIconGap )
+check( "the level is not moved",                 selfName.extraLabel:GetLeft(), 0 )
+
+-- an unchanged class does not re-set the texture
+local backgroundsBefore = stub.Counted( selfIcon, "SetBackground" )
+GRISTLE.Self.RefreshName()
+GRISTLE.Self.RefreshName()
+check( "an unchanged class does not swap the texture",
+	stub.Counted( selfIcon, "SetBackground" ), backgroundsBefore )
+
+-- a bigger name font makes a taller row, and the icon stays its own size, centred in it
+GRISTLE.Settings.nameFontSize = 23
+GRISTLE.ApplyAll()
+check( "the icon keeps its size under a larger font", selfIcon:GetWidth(), ICON )
+check( "and is centred in the taller row",
+	selfIcon:GetTop(), math.floor( ( GRISTLE.NameHeight() - ICON ) / 2 ) )
+GRISTLE.Settings.nameFontSize = GRISTLE.Defaults.nameFontSize
+GRISTLE.ApplyAll()
+
+-- hiding the name row has to take the icon with it, though it is not inside the row's clip
+GRISTLE.Settings.selfShowName = false
+GRISTLE.ApplyAll()
+check( "hiding the name row hides the icon",     selfIcon:IsVisible(), false )
+GRISTLE.Settings.selfShowName = true
+GRISTLE.ApplyAll()
+check( "and showing it brings the icon back",    selfIcon:IsVisible(), true )
+
+-- switched off, the name takes its place back
+GRISTLE.Settings.selfShowClassIcon = false
+GRISTLE.ApplyAll()
+check( "the icon can be switched off",           selfIcon:IsVisible(), false )
+check( "and the name returns to the edge",       selfName.nameLabel:GetLeft(), 0 )
+check( "and the row goes back to its font's height",
+	GRISTLE.NameRowHeight( "selfShowClassIcon" ), GRISTLE.NameHeight() )
+check( "at the full width",                      selfName.nameLabel:GetWidth(), selfName.clip:GetWidth() )
+
+GRISTLE.Settings.selfShowClassIcon = true
+GRISTLE.ApplyAll()
+check( "and back on",                            selfIcon:IsVisible(), true )
+check( "with the right emblem still",            selfIcon:GetBackground(), 0x41007DE7 )
+
+-- the target frame reads from the right, so its icon is at the right-hand end
+local targetIcon = targetName.icon
+
+local burglar = stub.NewActor( { name = "Sneak", morale = 100, maxMorale = 100, kind = "player", class = Class.Burglar } )
+player:SetTarget( burglar )
+check( "a player target shows its class",        targetIcon:IsVisible(), true )
+check( "the burglar emblem",                     targetIcon:GetBackground(), 0x41007DEB )
+check( "at the right-hand end",
+	targetIcon:GetLeft(), targetName.clip:GetLeft() + targetName.clip:GetWidth() - ICON )
+check( "the name stops short of it",
+	targetName.nameLabel:GetLeft() + targetName.nameLabel:GetWidth(),
+	targetName.clip:GetWidth() - ICON - GRISTLE.ClassIconGap )
+
+local minstrel = stub.NewActor( { name = "Singer", morale = 100, maxMorale = 100, kind = "player", class = Class.Minstrel } )
+player:SetTarget( minstrel )
+check( "swapping player targets swaps the emblem", targetIcon:GetBackground(), 0x41007DE6 )
+
+-- a monster has no GetClass: no icon, and the name goes back to the edge
+local wolf = stub.NewActor( { name = "Wolf", morale = 100, maxMorale = 100, kind = "monster" } )
+player:SetTarget( wolf )
+check( "a monster shows no icon",                targetIcon:IsVisible(), false )
+check( "and its name runs to the edge",          targetName.nameLabel:GetWidth(), targetName.clip:GetWidth() )
+
+-- a class with no emblem in the table shows nothing rather than a wrong one
+local oddity = stub.NewActor( { name = "Odd", morale = 100, maxMorale = 100, kind = "player", class = 9999 } )
+player:SetTarget( oddity )
+check( "an unrecognised class shows no icon",    targetIcon:IsVisible(), false )
+
+-- a GetClass that throws is a missing class, not an error out of the target change
+local broken = stub.NewActor( { name = "Broken", morale = 100, maxMorale = 100, kind = "player" } )
+broken.GetClass = function() error( "not ready" ) end
+player:SetTarget( broken )
+check( "a throwing GetClass shows no icon",      targetIcon:IsVisible(), false )
+check( "and the name is still there",            targetName.nameLabel:GetText(), "Broken" )
+
+-- the icon must not outlive the target it describes
+player:SetTarget( burglar )
+player:SetTarget( nil )
+check( "losing the target clears the icon",      targetIcon:IsVisible(), false )
+
+-- the setting is per frame
+GRISTLE.Settings.targetShowClassIcon = false
+GRISTLE.ApplyAll()
+player:SetTarget( burglar )
+check( "the target's icon has its own switch",   targetIcon:IsVisible(), false )
+check( "independent of the player's",            selfIcon:IsVisible(), true )
+GRISTLE.Settings.targetShowClassIcon = true
+GRISTLE.ApplyAll()
+check( "and turning it back on shows it at once", targetIcon:IsVisible(), true )
+
+player:SetTarget( nil )
+
+-- a player target whose class has not arrived yet, standing at full morale so nothing fires: the
+-- retry has to keep asking until the class turns up, then stop
+do
+	local classReady = false
+	local late = stub.NewActor( { name = "Late", morale = 100, maxMorale = 100, kind = "player" } )
+	late.GetClass = function() if classReady then return Class.Guardian end return nil end
+
+	player:SetTarget( late )
+	check( "a class that has not arrived shows no icon yet", targetIcon:IsVisible(), false )
+	check( "and the target is still pending",                GRISTLE.Target.ClassPending(), true )
+
+	classReady = true
+	stub.Tick( 0.3 )
+	check( "the retry picks the class up when it arrives",   targetIcon:IsVisible(), true )
+	check( "with the right emblem",                          targetIcon:GetBackground(), 0x41007DE8 )
+	check( "and nothing is pending any more",                GRISTLE.Target.ClassPending(), false )
+
+	-- a monster is never pending, so it never keeps a retry alive
+	player:SetTarget( wolf )
+	check( "a monster is never class-pending",               GRISTLE.Target.ClassPending(), false )
+
+	-- the debug command has to report the class read for both frames
+	player:SetTarget( burglar )
+	stub.lines = {}
+	local ok = pcall( function() stub.command:Execute( "gristle", "debug" ) end )
+	local printed = table.concat( stub.lines, "\n" )
+	check( "debug runs with a player target",                ok, true )
+	check( "and reports the target's GetClass",
+		string.find( printed, "target class icon" ) ~= nil and string.find( printed, "GetClass" ) ~= nil, true )
+
+	player:SetTarget( nil )
+	stub.lines = {}
+	ok = pcall( function() stub.command:Execute( "gristle", "debug" ) end )
+	check( "and with no target at all",                      ok, true )
+end
 
 ---------------------------------------------------------------------------------------------------
 section( "a maximum that reads zero" )
@@ -953,14 +1215,14 @@ section( "a maximum that reads zero" )
 local zeroMax = stub.NewActor( { name = "ZeroMax", morale = 700, maxMorale = 1000, kind = "monster" } )
 zeroMax.GetMaxMorale = function() return 0 end
 
-local gotMorale, gotMax = SINEW.ReadVital( zeroMax, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
+local gotMorale, gotMax = GRISTLE.ReadVital( zeroMax, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
 
 check( "a zero maximum falls back to the base maximum", gotMax, 1000 )
 check( "and the current value is unchanged",            gotMorale, 700 )
 
 -- with no fallback named, a zero maximum is still unreadable
 check( "a zero maximum with no fallback reads nothing",
-	SINEW.ReadVital( zeroMax, "GetMorale", "GetMaxMorale" ), nil )
+	GRISTLE.ReadVital( zeroMax, "GetMorale", "GetMaxMorale" ), nil )
 
 -- both zero is genuinely unreadable
 local bothZero = stub.NewActor( { name = "Both", morale = 10, maxMorale = 10, kind = "monster" } )
@@ -968,26 +1230,26 @@ bothZero.GetMaxMorale     = function() return 0 end
 bothZero.GetBaseMaxMorale = function() return 0 end
 
 check( "both maxima at zero reads nothing",
-	SINEW.ReadVital( bothZero, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" ), nil )
+	GRISTLE.ReadVital( bothZero, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" ), nil )
 
 -- a current of 0 is a dead target, not an unreadable one, and must still draw
 local dead = stub.NewActor( { name = "Dead", morale = 0, maxMorale = 1000, kind = "monster" } )
-local deadCurrent, deadMax = SINEW.ReadVital( dead, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
+local deadCurrent, deadMax = GRISTLE.ReadVital( dead, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
 
 check( "a current of zero still reads", deadCurrent, 0 )
 check( "with its maximum intact",       deadMax, 1000 )
 
--- /sinew debug is the tool for when something is already wrong, so it has to work on a broken
+-- /gristle debug is the tool for when something is already wrong, so it has to work on a broken
 -- entity above all. A diagnostic that throws is worse than none.
 stub.lines = {}
-local debugOk = pcall( function() stub.command:Execute( "sinew", "debug" ) end )
+local debugOk = pcall( function() stub.command:Execute( "gristle", "debug" ) end )
 
 check( "the debug command runs", debugOk, true )
 check( "and prints something",   #stub.lines > 5, true )
 
 local printed = table.concat( stub.lines, "\n" )
 check( "it reports the raw getter answers", string.find( printed, "GetBaseMaxMorale" ) ~= nil, true )
-check( "and what was made of them",         string.find( printed, "what Sinew read" ) ~= nil, true )
+check( "and what was made of them",         string.find( printed, "what Gristle read" ) ~= nil, true )
 check( "and the fill colour, for an invisible-bar diagnosis",
 	string.find( printed, "fill color" ) ~= nil, true )
 -- both the template and what it rendered to: a blank readout is either an empty template or one
@@ -996,25 +1258,25 @@ check( "and the context every template was rendered against",
 	string.find( printed, "the render context" ) ~= nil, true )
 
 ---------------------------------------------------------------------------------------------------
--- /sinew format is the only documentation a player gets
+-- /gristle format is the only documentation a player gets
 ---------------------------------------------------------------------------------------------------
 -- The options panel has room for the tag names and not for what they mean, and this game has no
 -- tooltip to put the rest in. A readout is typed, so looking up what can be typed has to work.
 
 stub.lines = {}
-local formatOk = pcall( function() stub.command:Execute( "sinew", "format" ) end )
+local formatOk = pcall( function() stub.command:Execute( "gristle", "format" ) end )
 
 check( "the format command runs", formatOk, true )
 
 local formatText = table.concat( stub.lines, "\n" )
 
-check( "it lists every tag", #SINEW.Format.Help, 11 )
+check( "it lists every tag", #GRISTLE.Format.Help, 11 )
 
 local missing = 0
-for i = 1, #SINEW.Format.Help do
-	if string.find( formatText, SINEW.Format.Help[i][1], 1, true ) == nil then
+for i = 1, #GRISTLE.Format.Help do
+	if string.find( formatText, GRISTLE.Format.Help[i][1], 1, true ) == nil then
 		missing = missing + 1
-		print( "          not listed: " .. SINEW.Format.Help[i][1] )
+		print( "          not listed: " .. GRISTLE.Format.Help[i][1] )
 	end
 end
 
@@ -1026,9 +1288,9 @@ check( "and what the frames are currently set to",
 
 -- every tag the help text advertises has to actually resolve, or the documentation lies
 local unresolved = 0
-for i = 1, #SINEW.Format.Help do
-	local tag = SINEW.Format.Help[i][1]
-	if SINEW.Format.Render( tag, { cur = 500, max = 1000, temp = 100, maxtemp = 200,
+for i = 1, #GRISTLE.Format.Help do
+	local tag = GRISTLE.Format.Help[i][1]
+	if GRISTLE.Format.Render( tag, { cur = 500, max = 1000, temp = 100, maxtemp = 200,
 	                              pow = 250, maxpow = 500, name = "Souru", level = 150 } ) == tag then
 		unresolved = unresolved + 1
 		print( "          not a real tag: " .. tag )
@@ -1042,14 +1304,14 @@ local angry = stub.NewActor( { name = "Angry", morale = 10, maxMorale = 10, kind
 angry.GetMorale = function() error( "no" ) end
 
 check( "a throwing getter reads nothing",
-	SINEW.ReadVital( angry, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" ), nil )
+	GRISTLE.ReadVital( angry, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" ), nil )
 
 -- and the whole way through, to the drawn bar
 player.GetMaxMorale = function() return 0 end
 player.morale = 500
 bar:Reset()
 
-check( "the player's bar fills from the base maximum", SINEW.Self.RefreshMorale(), true )
+check( "the player's bar fills from the base maximum", GRISTLE.Self.RefreshMorale(), true )
 check( "and is drawn",                                 bar.fill:GetWidth(), 130 )
 check( "with its readout",                             bar.valueLabel:GetText(), "500" )
 
@@ -1075,7 +1337,7 @@ slow.GetMorale        = function( e ) return ready and 900 or 0 end
 
 player:SetTarget( slow )
 
-check( "an unready target is still attached to", SINEW.Target.entity, slow )
+check( "an unready target is still attached to", GRISTLE.Target.entity, slow )
 check( "its handlers are attached",              type( slow.MoraleChanged ) ~= "nil", true )
 check( "the frame is up with its name",          targetName.nameLabel:GetText(), "Slow" )
 check( "but no bar until it reads",              targetWindow.moraleBar.clip:IsVisible(), false )
@@ -1142,13 +1404,13 @@ player.morale, player.maxMorale = 1000, 1000
 bar:Reset()
 playerReady = false
 
-check( "a failed read leaves the bar empty", SINEW.Self.RefreshMorale(), false )
+check( "a failed read leaves the bar empty", GRISTLE.Self.RefreshMorale(), false )
 
 -- power still has to be drawn on a tick where morale failed, which is exactly what the screenshot
 -- showed: a full hairline under an empty morale bar
-check( "but power is still read", SINEW.Self.RefreshPower(), true )
+check( "but power is still read", GRISTLE.Self.RefreshPower(), true )
 
-SINEW.Self.RefreshPersistently()
+GRISTLE.Self.RefreshPersistently()
 
 playerReady = true
 stub.Tick( 0.3 )
@@ -1157,7 +1419,7 @@ check( "the retry fills the morale bar in once it reads", bar.fill:GetWidth(), 2
 check( "and the readout with it",                         bar.valueLabel:GetText(), "1,000" )
 
 player.GetMaxMorale = realMaxMorale
-SINEW.Updater.Clear()
+GRISTLE.Updater.Clear()
 
 ---------------------------------------------------------------------------------------------------
 section( "the entity element" )
@@ -1191,25 +1453,25 @@ player:SetTarget( nil )
 check( "and unbinds when the target goes", targetWindow.entityControl:GetEntity(), nil )
 check( "so a dead frame cannot be clicked", targetWindow.entityControl:IsMouseVisible(), false )
 
--- it is the one thing in Sinew that takes the mouse, so it has to be switchable
-SINEW.Settings.entityControl = false
-SINEW.ApplyAll()
+-- it is the one thing in Gristle that takes the mouse, so it has to be switchable
+GRISTLE.Settings.entityControl = false
+GRISTLE.ApplyAll()
 
 check( "switching it off restores a click-through HUD",
 	selfWindow.entityControl:IsMouseVisible(), false )
 check( "and takes it off screen", selfWindow.entityControl:IsVisible(), false )
 
-SINEW.Settings.entityControl = true
-SINEW.ApplyAll()
+GRISTLE.Settings.entityControl = true
+GRISTLE.ApplyAll()
 check( "and back on", selfWindow.entityControl:IsMouseVisible(), true )
 
 ---------------------------------------------------------------------------------------------------
 section( "fine positioning" )
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Settings.mirrorTarget = false
-SINEW.Settings.selfLeft, SINEW.Settings.selfTop = SINEW.PixelToRatio( 400, 500 )
-SINEW.ApplyPositions()
+GRISTLE.Settings.mirrorTarget = false
+GRISTLE.Settings.selfLeft, GRISTLE.Settings.selfTop = GRISTLE.PixelToRatio( 400, 500 )
+GRISTLE.ApplyPositions()
 
 selfWindow:Nudge( 1, 0 )
 check( "one pixel right", selfWindow.window:GetLeft(), 401 )
@@ -1221,19 +1483,19 @@ selfWindow:Nudge( 0, -1 )
 check( "one pixel up",    selfWindow.window:GetTop(),  499 )
 
 -- a nudge saves, the same as a drag does
-checkNear( "a nudge is saved", SINEW.Settings.selfTop, 499 / 1080 )
+checkNear( "a nudge is saved", GRISTLE.Settings.selfTop, 499 / 1080 )
 
 -- and it cannot walk a window off the screen
-SINEW.Settings.selfLeft, SINEW.Settings.selfTop = SINEW.PixelToRatio( 0, 0 )
-SINEW.ApplyPositions()
+GRISTLE.Settings.selfLeft, GRISTLE.Settings.selfTop = GRISTLE.PixelToRatio( 0, 0 )
+GRISTLE.ApplyPositions()
 selfWindow:Nudge( -5, -5 )
 check( "a nudge stops at the left edge", selfWindow.window:GetLeft(), 0 )
 check( "and at the top edge",            selfWindow.window:GetTop(),  0 )
 
 -- nudging a mirrored pair keeps them mirrored
-SINEW.Settings.selfLeft, SINEW.Settings.selfTop = SINEW.PixelToRatio( 400, 500 )
-SINEW.Settings.mirrorTarget = true
-SINEW.ApplyPositions()
+GRISTLE.Settings.selfLeft, GRISTLE.Settings.selfTop = GRISTLE.PixelToRatio( 400, 500 )
+GRISTLE.Settings.mirrorTarget = true
+GRISTLE.ApplyPositions()
 
 selfWindow:Nudge( 3, 0 )
 check( "the player frame moved", selfWindow.window:GetLeft(), 403 )
@@ -1244,8 +1506,8 @@ check( "and its mirror moved with it",
 targetWindow:Nudge( 2, 0 )
 check( "nudging the mirror moved the player frame", selfWindow.window:GetLeft(), 401 )
 
-SINEW.Settings.mirrorTarget = false
-SINEW.ApplyPositions()
+GRISTLE.Settings.mirrorTarget = false
+GRISTLE.ApplyPositions()
 
 ---------------------------------------------------------------------------------------------------
 section( "frame alignment" )
@@ -1257,7 +1519,7 @@ section( "frame alignment" )
 
 local alignment = Turbine.UI.ContentAlignment
 
-SINEW.ApplyAll()
+GRISTLE.ApplyAll()
 
 check( "the player's name sits left",
 	selfName.nameLabel:GetTextAlignment(), alignment.MiddleLeft )
@@ -1297,20 +1559,20 @@ check( "a frame's two readouts never read from the same end",
 
 -- it is not a setting any more, and a savefile that still carries one is cleaned rather than left
 -- holding a value nothing reads
-SINEW.Settings.nameAlignRight = true
-SINEW.NormaliseSettings()
-check( "a stale name alignment setting is cleared", SINEW.Settings.nameAlignRight, nil )
-check( "and it is not a default",                   SINEW.Defaults.nameAlignRight, nil )
+GRISTLE.Settings.nameAlignRight = true
+GRISTLE.NormaliseSettings()
+check( "a stale name alignment setting is cleared", GRISTLE.Settings.nameAlignRight, nil )
+check( "and it is not a default",                   GRISTLE.Defaults.nameAlignRight, nil )
 
 -- a relayout must not quietly undo it
-SINEW.Settings.nameFontSize = 16
-SINEW.ApplyAll()
+GRISTLE.Settings.nameFontSize = 16
+GRISTLE.ApplyAll()
 check( "the target's name is still right after a relayout",
 	targetWindow.nameRow.nameLabel:GetTextAlignment(), alignment.MiddleRight )
 check( "and its readouts too",
 	targetWindow.moraleBar.valueLabel:GetTextAlignment(), alignment.MiddleRight )
-SINEW.Settings.nameFontSize = 14
-SINEW.ApplyAll()
+GRISTLE.Settings.nameFontSize = 14
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 -- every label is outlined in black, so it reads over a full bar, an empty track and the world alike
@@ -1335,47 +1597,47 @@ local foreign = function() other.calls = other.calls + 1 end
 
 local victim = stub.NewActor( { kind = "monster" } )
 
-SINEW.AddCallback( victim, "MoraleChanged", foreign )
+GRISTLE.AddCallback( victim, "MoraleChanged", foreign )
 check( "a single handler is stored bare", type( victim.MoraleChanged ), "function" )
 
 local mine = function() end
-SINEW.AddCallback( victim, "MoraleChanged", mine )
+GRISTLE.AddCallback( victim, "MoraleChanged", mine )
 check( "a second handler promotes to a table", type( victim.MoraleChanged ), "table" )
 check( "both are present", #victim.MoraleChanged, 2 )
 
 victim:Fire( "MoraleChanged" )
 check( "the pre-existing handler still runs", other.calls, 1 )
 
-SINEW.RemoveCallback( victim, "MoraleChanged", mine )
+GRISTLE.RemoveCallback( victim, "MoraleChanged", mine )
 check( "removing ours leaves theirs", #victim.MoraleChanged, 1 )
 
 victim:Fire( "MoraleChanged" )
 check( "theirs keeps running after ours is gone", other.calls, 2 )
 
-SINEW.RemoveCallback( victim, "MoraleChanged", foreign )
+GRISTLE.RemoveCallback( victim, "MoraleChanged", foreign )
 check( "removing the last one clears the slot", victim.MoraleChanged, nil )
 
 ---------------------------------------------------------------------------------------------------
 section( "options panel stepping" )
 ---------------------------------------------------------------------------------------------------
 
-check( "an integer step", SINEW.StepValue( 260, 1, 10, 40, 1200, 0 ), 270 )
-check( "stepping down",   SINEW.StepValue( 260, -1, 10, 40, 1200, 0 ), 250 )
-check( "clamped at the top",    SINEW.StepValue( 1200, 1, 10, 40, 1200, 0 ), 1200 )
-check( "clamped at the bottom", SINEW.StepValue( 40, -1, 10, 40, 1200, 0 ), 40 )
-check( "a nil value lands on the minimum", SINEW.StepValue( nil, -1, 10, 40, 1200, 0 ), 40 )
-check( "a junk value lands on the minimum", SINEW.StepValue( "x", -1, 10, 40, 1200, 0 ), 40 )
+check( "an integer step", GRISTLE.StepValue( 260, 1, 10, 40, 1200, 0 ), 270 )
+check( "stepping down",   GRISTLE.StepValue( 260, -1, 10, 40, 1200, 0 ), 250 )
+check( "clamped at the top",    GRISTLE.StepValue( 1200, 1, 10, 40, 1200, 0 ), 1200 )
+check( "clamped at the bottom", GRISTLE.StepValue( 40, -1, 10, 40, 1200, 0 ), 40 )
+check( "a nil value lands on the minimum", GRISTLE.StepValue( nil, -1, 10, 40, 1200, 0 ), 40 )
+check( "a junk value lands on the minimum", GRISTLE.StepValue( "x", -1, 10, 40, 1200, 0 ), 40 )
 
 -- the reason StepValue exists: adding 0.05 twenty times in binary floating point drifts, and the
 -- drifted value would be both printed and saved
 local opacity = 0.05
 for _ = 1, 19 do
-	opacity = SINEW.StepValue( opacity, 1, 0.05, 0.05, 1.0, 2 )
+	opacity = GRISTLE.StepValue( opacity, 1, 0.05, 0.05, 1.0, 2 )
 end
 check( "repeated 0.05 steps do not drift", opacity, 1.0 )
 
 local fade = 0.35
-fade = SINEW.StepValue( fade, 1, 0.05, 0.05, 2.0, 2 )
+fade = GRISTLE.StepValue( fade, 1, 0.05, 0.05, 2.0, 2 )
 check( "a fractional step stays exact", fade, 0.4 )
 
 check( "the options panel was built", plugin.GetOptionsPanel() ~= nil, true )
@@ -1413,7 +1675,8 @@ for i = 1, optionsList:GetItemCount() do
 	collectBoxes( optionsList._items[i] )
 end
 
-check( "there is a text box for every template", #boxes, 8 )
+-- eight template boxes in the readouts section, then one hex box per colour row below them
+check( "there is a text box for every template and every colour", #boxes, 8 + 10 )
 
 -- and each one has something painted behind it, or the field is invisible
 local unbacked = 0
@@ -1438,18 +1701,18 @@ firstBox:SetText( "[perc:1]" )
 local typedOk = pcall( function() firstBox.TextChanged( firstBox, {} ) end )
 
 check( "typing in a box commits", typedOk, true )
-check( "and reaches the settings", SINEW.Settings.selfFormatBarLeft, "[perc:1]" )
+check( "and reaches the settings", GRISTLE.Settings.selfFormatBarLeft, "[perc:1]" )
 
-local onDiskNow = Turbine.PluginData.Load( Turbine.DataScope.Character, "sinewSettings" )
+local onDiskNow = Turbine.PluginData.Load( Turbine.DataScope.Character, "gristleSettings" )
 check( "and the savefile", tostring( onDiskNow.selfFormatBarLeft ), "[perc:1]" )
 
 -- a template survives the euro round trip, which turns anything that parses as a number back into
 -- one. "[perc:1]" does not, which is the only reason this works at all.
 check( "a template is still text on disk", type( onDiskNow.selfFormatBarLeft ), "string" )
 
-SINEW.Settings.selfFormatBarLeft = SINEW.Defaults.selfFormatBarLeft
-SINEW.Save()
-SINEW.ApplyAll()
+GRISTLE.Settings.selfFormatBarLeft = GRISTLE.Defaults.selfFormatBarLeft
+GRISTLE.Save()
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 -- the panel must scroll
@@ -1533,24 +1796,24 @@ check( "every widget fits inside its section", overflows, 0 )
 section( "positions" )
 ---------------------------------------------------------------------------------------------------
 
-local ratioLeft, ratioTop = SINEW.PixelToRatio( 960, 540 )
+local ratioLeft, ratioTop = GRISTLE.PixelToRatio( 960, 540 )
 checkNear( "pixel to ratio, left", ratioLeft, 0.5 )
 checkNear( "pixel to ratio, top",  ratioTop,  0.5 )
 
-local pixelLeft, pixelTop = SINEW.RatioToPixel( 0.5, 0.5 )
+local pixelLeft, pixelTop = GRISTLE.RatioToPixel( 0.5, 0.5 )
 check( "ratio to pixel, left", pixelLeft, 960 )
 check( "ratio to pixel, top",  pixelTop,  540 )
 
-local cl, ct = SINEW.ClampToScreen( 5000, 5000, 260, 40 )
+local cl, ct = GRISTLE.ClampToScreen( 5000, 5000, 260, 40 )
 check( "clamped back inside, left", cl, 1920 - 260 )
 check( "clamped back inside, top",  ct, 1080 - 40 )
 
-local nl, nt = SINEW.ClampToScreen( -100, -100, 260, 40 )
+local nl, nt = GRISTLE.ClampToScreen( -100, -100, 260, 40 )
 check( "clamped off the near edge, left", nl, 0 )
 check( "clamped off the near edge, top",  nt, 0 )
 
 -- a window wider than the screen keeps its top left corner on screen
-local wl, wt = SINEW.ClampToScreen( 10, 10, 4000, 40 )
+local wl, wt = GRISTLE.ClampToScreen( 10, 10, 4000, 40 )
 check( "an oversized window keeps its left edge", wl, 0 )
 
 ---------------------------------------------------------------------------------------------------
@@ -1560,32 +1823,32 @@ section( "mirrored target position" )
 -- right, whatever the two widths are
 
 check( "a frame at the left edge mirrors to the right edge",
-	SINEW.MirrorLeft( 0, 260 ), 1920 - 260 )
+	GRISTLE.MirrorLeft( 0, 260 ), 1920 - 260 )
 check( "and 100 in from the left is 100 in from the right",
-	SINEW.MirrorLeft( 100, 260 ), 1920 - 100 - 260 )
+	GRISTLE.MirrorLeft( 100, 260 ), 1920 - 100 - 260 )
 
 -- the reflection is its own inverse, which is what lets a mirrored window be dragged
 check( "mirroring twice returns the original",
-	SINEW.MirrorLeft( SINEW.MirrorLeft( 340, 260 ), 260 ), 340 )
+	GRISTLE.MirrorLeft( GRISTLE.MirrorLeft( 340, 260 ), 260 ), 340 )
 
 -- a frame centred on the screen mirrors onto itself
 check( "a centred frame mirrors onto itself",
-	SINEW.MirrorLeft( ( 1920 - 260 ) / 2, 260 ), ( 1920 - 260 ) / 2 )
+	GRISTLE.MirrorLeft( ( 1920 - 260 ) / 2, 260 ), ( 1920 - 260 ) / 2 )
 
 -- now through the real windows
-SINEW.Settings.mirrorTarget = false
+GRISTLE.Settings.mirrorTarget = false
 check( "the player window never mirrors", selfWindow:IsMirrored(), false )
 check( "and the target window does not while it is off", targetWindow:IsMirrored(), false )
 
-SINEW.Settings.selfLeft, SINEW.Settings.selfTop = SINEW.PixelToRatio( 300, 800 )
-SINEW.Settings.targetLeft, SINEW.Settings.targetTop = SINEW.PixelToRatio( 100, 100 )
-SINEW.ApplyPositions()
+GRISTLE.Settings.selfLeft, GRISTLE.Settings.selfTop = GRISTLE.PixelToRatio( 300, 800 )
+GRISTLE.Settings.targetLeft, GRISTLE.Settings.targetTop = GRISTLE.PixelToRatio( 100, 100 )
+GRISTLE.ApplyPositions()
 
 check( "unmirrored, the target keeps its own position, left", targetWindow.window:GetLeft(), 100 )
 check( "unmirrored, the target keeps its own position, top",  targetWindow.window:GetTop(),  100 )
 
-SINEW.Settings.mirrorTarget = true
-SINEW.ApplyPositions()
+GRISTLE.Settings.mirrorTarget = true
+GRISTLE.ApplyPositions()
 
 check( "mirroring is live", targetWindow:IsMirrored(), true )
 check( "the target reflects the player's position",
@@ -1595,19 +1858,19 @@ check( "the player window did not move", selfWindow.window:GetLeft(), 300 )
 
 -- the saved target position is left alone while mirroring, so turning it off restores it
 checkNear( "the target's own saved position is untouched",
-	SINEW.Settings.targetLeft, 100 / 1920 )
+	GRISTLE.Settings.targetLeft, 100 / 1920 )
 
-SINEW.Settings.mirrorTarget = false
-SINEW.ApplyPositions()
+GRISTLE.Settings.mirrorTarget = false
+GRISTLE.ApplyPositions()
 check( "turning it off restores the target's own position", targetWindow.window:GetLeft(), 100 )
 
 ---------------------------------------------------------------------------------------------------
 -- dragging either frame while mirroring
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Settings.mirrorTarget = true
-SINEW.SetMoveMode( true )
-SINEW.ApplyPositions()
+GRISTLE.Settings.mirrorTarget = true
+GRISTLE.SetMoveMode( true )
+GRISTLE.ApplyPositions()
 
 -- dragging the player frame carries the mirror live, not just on mouse up
 selfWindow.moveControl.MouseDown( nil, { Button = 1, X = 0, Y = 0 } )
@@ -1619,7 +1882,7 @@ check( "and the mirror followed during the drag",
 	targetWindow.window:GetLeft(), 1920 - draggedLeft - targetWindow.window:GetWidth() )
 
 selfWindow.moveControl.MouseUp( nil, { Button = 1, X = 40, Y = 0 } )
-checkNear( "the drag saved the player's position", SINEW.Settings.selfLeft, 340 / 1920 )
+checkNear( "the drag saved the player's position", GRISTLE.Settings.selfLeft, 340 / 1920 )
 
 -- and dragging the mirror writes back to what it mirrors, rather than to a position it ignores
 targetWindow.moveControl.MouseDown( nil, { Button = 1, X = 0, Y = 0 } )
@@ -1627,25 +1890,25 @@ targetWindow.moveControl.MouseMove( nil, { Button = 1, X = -50, Y = 0 } )
 targetWindow.moveControl.MouseUp( nil, { Button = 1, X = -50, Y = 0 } )
 
 -- the mirror moved 50 left, so its source moves 50 right
-checkNear( "dragging the mirror moved the player frame", SINEW.Settings.selfLeft, 390 / 1920 )
+checkNear( "dragging the mirror moved the player frame", GRISTLE.Settings.selfLeft, 390 / 1920 )
 check( "the player frame is where the mirror put it", selfWindow.window:GetLeft(), 390 )
 check( "and the two are still reflections",
 	targetWindow.window:GetLeft(), 1920 - 390 - targetWindow.window:GetWidth() )
 
 -- a mirrored window must not write a position of its own
 checkNear( "the mirror still has not touched its own saved position",
-	SINEW.Settings.targetLeft, 100 / 1920 )
+	GRISTLE.Settings.targetLeft, 100 / 1920 )
 
 -- a resize has to re-place the mirror, since its position depends on its own width
-SINEW.Settings.targetWidth = 400
-SINEW.ApplyAll()
+GRISTLE.Settings.targetWidth = 400
+GRISTLE.ApplyAll()
 check( "a wider mirror is re-placed from its new width",
 	targetWindow.window:GetLeft(), 1920 - 390 - targetWindow.window:GetWidth() )
 
-SINEW.Settings.targetWidth = 260
-SINEW.Settings.mirrorTarget = false
-SINEW.SetMoveMode( false )
-SINEW.ApplyAll()
+GRISTLE.Settings.targetWidth = 260
+GRISTLE.Settings.mirrorTarget = false
+GRISTLE.SetMoveMode( false )
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 section( "savefile round trip" )
@@ -1662,7 +1925,7 @@ local sample = {
 
 -- deliberately not called "euro": that is the locale flag, and shadowing it here silently turned
 -- the English run into a half-euro one
-local converted = SINEW.ConvertToEuro( sample )
+local converted = GRISTLE.ConvertToEuro( sample )
 
 check( "numbers become strings",       type( converted.width ), "string" )
 check( "nested numbers too",           type( converted.nested.height ), "string" )
@@ -1671,7 +1934,7 @@ check( "booleans survive",             converted.flag, true )
 check( "strings survive",              converted.name, "morale" )
 check( "Color instances pass through untouched", converted.color, sample.color )
 
-local back = SINEW.ConvertFromEuro( converted )
+local back = GRISTLE.ConvertFromEuro( converted )
 
 check( "numbers come back",        back.width, 260 )
 checkNear( "fractions come back",  back.nested.ratio, 0.755 )
@@ -1680,15 +1943,15 @@ check( "booleans still survive",   back.flag, true )
 check( "strings still survive",    back.name, "morale" )
 
 -- idempotent on a savefile written before the euro fix
-local plain = SINEW.ConvertFromEuro( sample )
+local plain = GRISTLE.ConvertFromEuro( sample )
 check( "already-numeric data survives a second pass", plain.width, 260 )
 
 -- a real save and load through the fake disk
-SINEW.Settings.selfWidth = 310
-SINEW.Settings.selfTop = 0.42
-SINEW.Save()
+GRISTLE.Settings.selfWidth = 310
+GRISTLE.Settings.selfTop = 0.42
+GRISTLE.Save()
 
-local onDisk = Turbine.PluginData.Load( Turbine.DataScope.Character, "sinewSettings" )
+local onDisk = Turbine.PluginData.Load( Turbine.DataScope.Character, "gristleSettings" )
 check( "the character scope was written", onDisk ~= nil, true )
 check( "colours are stored as plain tables", getmetatable( onDisk.colorMorale ), nil )
 check( "no Color instance leaked into the savefile", onDisk.colorMorale.R ~= nil, true )
@@ -1703,20 +1966,20 @@ else
 end
 
 -- and the value survives whichever path it took
-local reloaded = euro and SINEW.ConvertFromEuro( onDisk ) or onDisk
+local reloaded = euro and GRISTLE.ConvertFromEuro( onDisk ) or onDisk
 check( "the changed value survives the full save/load path", reloaded.selfWidth, 310 )
 checkNear( "and so does a fractional one", reloaded.selfTop, 0.42 )
 
 -- with no account copy at load time, every save mirrors to it
-local mirrored = Turbine.PluginData.Load( Turbine.DataScope.Account, "sinewSettings" )
+local mirrored = Turbine.PluginData.Load( Turbine.DataScope.Account, "gristleSettings" )
 check( "the account copy was mirrored", mirrored ~= nil, true )
-check( "SINEW reports a shared copy exists", SINEW.HasGlobalSettings(), true )
+check( "GRISTLE reports a shared copy exists", GRISTLE.HasGlobalSettings(), true )
 
 ---------------------------------------------------------------------------------------------------
 section( "drag" )
 ---------------------------------------------------------------------------------------------------
 
-SINEW.SetMoveMode( true )
+GRISTLE.SetMoveMode( true )
 check( "move mode makes the handle clickable", selfWindow.moveControl:IsMouseVisible(), true )
 check( "and the target window grabbable with no target", targetWindow.window:IsVisible(), true )
 
@@ -1732,7 +1995,7 @@ check( "dragging moves the window by the delta, top",  movedTop,  startTop + 20 
 selfWindow.moveControl.MouseUp( nil, { Button = 1, X = 40, Y = 30 } )
 
 checkNear( "mouse up saves the new position as a ratio",
-	SINEW.Settings.selfLeft, movedLeft / 1920 )
+	GRISTLE.Settings.selfLeft, movedLeft / 1920 )
 
 -- a drag must not be able to strand a window off-screen
 selfWindow.moveControl.MouseDown( nil, { Button = 1, X = 0, Y = 0 } )
@@ -1753,7 +2016,7 @@ check( "a right-click does not drag", selfWindow.window:GetLeft(), rl )
 check( "the handle sits above every bar control",
 	selfWindow.moveControl:GetZOrder() > selfWindow.powerBar.clip:GetZOrder(), true )
 
-SINEW.SetMoveMode( false )
+GRISTLE.SetMoveMode( false )
 check( "leaving move mode makes the handle click-through", selfWindow.moveControl:IsMouseVisible(), false )
 check( "and hides the target window again", targetWindow.window:IsVisible(), false )
 
@@ -1789,12 +2052,12 @@ section( "opacity" )
 ---------------------------------------------------------------------------------------------------
 -- one fixed value, deliberately not tied to combat any more
 
-SINEW.Settings.opacity = 1.0
-SINEW.ApplyAll()
+GRISTLE.Settings.opacity = 1.0
+GRISTLE.ApplyAll()
 checkNear( "full opacity is applied", selfWindow.window:GetOpacity(), 1.0 )
 
-SINEW.Settings.opacity = 0.6
-SINEW.ApplyAll()
+GRISTLE.Settings.opacity = 0.6
+GRISTLE.ApplyAll()
 checkNear( "a lowered opacity reaches the player window", selfWindow.window:GetOpacity(), 0.6 )
 checkNear( "and the target window",                       targetWindow.window:GetOpacity(), 0.6 )
 
@@ -1810,33 +2073,33 @@ checkNear( "and leaving it does not either",     selfWindow.window:GetOpacity(),
 check( "no combat handler is attached to LocalPlayer", player.InCombatChanged, nil )
 
 -- a faint HUD still has to be findable in order to drag it
-SINEW.SetMoveMode( true )
+GRISTLE.SetMoveMode( true )
 checkNear( "drag mode overrides the opacity", selfWindow.window:GetOpacity(), 1.0 )
 
-SINEW.SetMoveMode( false )
+GRISTLE.SetMoveMode( false )
 checkNear( "and leaving drag mode restores it", selfWindow.window:GetOpacity(), 0.6 )
 
 -- zero would be invisible with no visible way back
-SINEW.Settings.opacity = 0
-SINEW.NormaliseSettings()
-check( "opacity is floored above invisible", SINEW.Settings.opacity, 0.05 )
+GRISTLE.Settings.opacity = 0
+GRISTLE.NormaliseSettings()
+check( "opacity is floored above invisible", GRISTLE.Settings.opacity, 0.05 )
 
-SINEW.Settings.opacity = 1.0
-SINEW.ApplyAll()
+GRISTLE.Settings.opacity = 1.0
+GRISTLE.ApplyAll()
 
 -- an existing savefile's dead keys are cleared rather than left to linger
-SINEW.Settings = { version = 2, opacityCombat = 1.0, opacityIdle = 0.55, selfWidth = 280 }
-SINEW.NormaliseSettings()
+GRISTLE.Settings = { version = 2, opacityCombat = 1.0, opacityIdle = 0.55, selfWidth = 280 }
+GRISTLE.NormaliseSettings()
 
-check( "the old combat opacity is gone", SINEW.Settings.opacityCombat, nil )
-check( "the old idle opacity too",       SINEW.Settings.opacityIdle,   nil )
-check( "the new one is defaulted",       SINEW.Settings.opacity,       1.0 )
-check( "and the savefile is restamped",  SINEW.Settings.version,       4 )
-check( "other settings are left alone",  SINEW.Settings.selfWidth,     280 )
+check( "the old combat opacity is gone", GRISTLE.Settings.opacityCombat, nil )
+check( "the old idle opacity too",       GRISTLE.Settings.opacityIdle,   nil )
+check( "the new one is defaulted",       GRISTLE.Settings.opacity,       1.0 )
+check( "and the savefile is restamped",  GRISTLE.Settings.version,       4 )
+check( "other settings are left alone",  GRISTLE.Settings.selfWidth,     280 )
 
-SINEW.Settings = {}
-SINEW.NormaliseSettings()
-SINEW.ApplyAll()
+GRISTLE.Settings = {}
+GRISTLE.NormaliseSettings()
+GRISTLE.ApplyAll()
 
 ---------------------------------------------------------------------------------------------------
 section( "idle cost" )
@@ -1864,6 +2127,245 @@ for i = 1, #stub.updaters do
 end
 
 check( "and back on when a flash starts", anyWantsUpdates, true )
+
+---------------------------------------------------------------------------------------------------
+section( "appearance: sheen, threshold marks, contrast, blend, hex colours" )
+---------------------------------------------------------------------------------------------------
+-- wrapped in a block: the main chunk is close to Lua 5.1's 200-local limit
+do
+
+	local b = GRISTLE.Self.window.moraleBar
+	local s = GRISTLE.Settings
+
+	player:SetBubble( 0, 0 )
+	player:SetMorale( 1000 )
+
+	-- hex codes ------------------------------------------------------------------------------------
+
+	check( "a colour turns into a hex code", GRISTLE.ColorToHex( { R = 1, G = 0, B = 0.5 } ), "FF0080" )
+
+	local parsed = GRISTLE.HexToColor( "#f9c229" )
+	check( "a hex code parses, either case, with a #", parsed ~= nil, true )
+	check( "and round-trips", GRISTLE.ColorToHex( parsed ), "F9C229" )
+	check( "without the # too", GRISTLE.ColorToHex( GRISTLE.HexToColor( "00ff00" ) ), "00FF00" )
+	check( "five digits is refused",  GRISTLE.HexToColor( "#12345" ), nil )
+	check( "seven digits is refused", GRISTLE.HexToColor( "1234567" ), nil )
+	check( "non-hex is refused",      GRISTLE.HexToColor( "GGGGGG" ), nil )
+	check( "a number is refused",     GRISTLE.HexToColor( 123456 ), nil )
+
+	-- lerp -----------------------------------------------------------------------------------------
+
+	local black, white = { R = 0, G = 0, B = 0 }, { R = 1, G = 1, B = 1 }
+	checkNear( "lerp at 0 is the start", GRISTLE.LerpColor( black, white, 0 ).R, 0 )
+	checkNear( "lerp at 1 is the end",   GRISTLE.LerpColor( black, white, 1 ).G, 1 )
+	checkNear( "lerp at half is between", GRISTLE.LerpColor( black, white, 0.5 ).B, 0.5 )
+	checkNear( "lerp is clamped", GRISTLE.LerpColor( black, white, 7 ).R, 1 )
+
+	-- sheen ----------------------------------------------------------------------------------------
+
+	check( "sheen is on by default",          s.sheen, 0.15 )
+	check( "the highlight is shown",           b.highlight:IsVisible(), true )
+	check( "the shade is shown",               b.shade:IsVisible(), true )
+	check( "the highlight spans the track",    b.highlight:GetWidth(), b.width )
+	check( "the shade sits at the bottom",
+		select( 2, b.shade:GetPosition() ) + b.shade:GetHeight(), b.height )
+	checkNear( "the highlight is see-through", b.highlight:GetBackColor().A, 0.15 )
+	-- Inside one Window a see-through child replaces the pixels under it rather than blending with
+	-- them, so a sheen sharing the fill's window punched holes through to the track. Measured in
+	-- game: grey and black bands over a full bar. It has to be a layer of its own, above the fill.
+	check( "the sheen is not in the fill's window",   b.highlight:GetParent() ~= b.clip, true )
+	check( "nor are the threshold marks",             b.ticks[1].control:GetParent() ~= b.clip, true )
+	check( "it is in a window of its own",            b.highlight:GetParent(), b.overlay )
+	check( "the marks share it",                      b.ticks[1].control:GetParent(), b.overlay )
+	check( "that layer is above the fill's",          b.overlay:GetZOrder() > b.clip:GetZOrder(), true )
+	check( "and below the readouts",                  b.overlay:GetZOrder() < b.labelBack:GetZOrder(), true )
+	check( "it sits exactly over the track",          b.overlay:GetLeft(), b.clip:GetLeft() )
+	check( "at the track's size",                     b.overlay:GetWidth(), b.clip:GetWidth() )
+	check( "and it is on screen",                     effectivelyVisible( b.highlight ), true )
+	check( "the sheen lets clicks through", b.highlight:IsMouseVisible(), false )
+
+	local hairline = GRISTLE.Self.window.powerBar
+	check( "the hairline gets a one pixel highlight", hairline.highlight:GetHeight(), 1 )
+	check( "and no shade",                            hairline.shade:IsVisible(), false )
+
+	s.sheen = 0
+	GRISTLE.ApplyAll()
+	check( "sheen 0 hides the highlight", b.highlight:IsVisible(), false )
+	check( "and the shade",               b.shade:IsVisible(), false )
+
+	s.sheen = 0.9
+	GRISTLE.NormaliseSettings()
+	check( "sheen is capped at half", s.sheen, 0.5 )
+	s.sheen = "rubbish"
+	GRISTLE.NormaliseSettings()
+	check( "a nonsense sheen falls back to the default", s.sheen, 0.15 )
+	GRISTLE.ApplyAll()
+
+	-- threshold marks ------------------------------------------------------------------------------
+
+	player:SetMorale( 1000 )
+	check( "there are two marks on the morale bar", #b.ticks, 2 )
+	check( "none on the hairline",                  #hairline.ticks, 0 )
+	check( "the warn mark is at 50%",   b.ticks[1].control:GetLeft(), 130 )
+	check( "the danger mark is at 25%", b.ticks[2].control:GetLeft(), 65 )
+	check( "the marks are shown",       b.ticks[1].control:IsVisible(), true )
+
+	-- a bubble shrinks the morale's share of the track, and the marks have to follow
+	player:SetBubble( 250, 250 )
+	check( "with a bubble the warn mark moves in",   b.ticks[1].control:GetLeft(), 97 )
+	check( "and the danger mark too",                b.ticks[2].control:GetLeft(), 48 )
+
+	local placed = stub.Counted( b.ticks[1].control, "SetPosition" )
+	player:SetMorale( 900 )
+	player:SetMorale( 800 )
+	check( "the marks are not moved while the width holds",
+		stub.Counted( b.ticks[1].control, "SetPosition" ), placed )
+
+	player:SetBubble( 0, 0 )
+	check( "and go back when it is gone", b.ticks[1].control:GetLeft(), 130 )
+
+	s.showTicks = false
+	GRISTLE.ApplyAll()
+	check( "switching them off hides them", b.ticks[1].control:IsVisible(), false )
+	s.showTicks = "yes"
+	GRISTLE.NormaliseSettings()
+	check( "a non-boolean switch falls back to its default", s.showTicks, true )
+	GRISTLE.ApplyAll()
+
+	-- contrast -------------------------------------------------------------------------------------
+
+	local dark = s.colorTextDark
+
+	-- the default green is bright-ish but white still reads on it
+	player:SetMorale( 1000 )
+	check( "white text stays on the default green", b.valueLabel:GetForeColor().R, s.colorText.R )
+
+	-- amber, the way this plugin's own author runs it
+	s.colorMorale = { R = 0.98, G = 0.76, B = 0.16 }
+	GRISTLE.ApplyAll()
+	player:SetMorale( 1000 )
+	check( "dark text on a bright fill",        b.valueLabel:GetForeColor().R, dark.R )
+	checkNear( "its outline is the fill colour", b.valueLabel:GetOutlineColor().R, 0.98 )
+	check( "and the text is still there",       b.valueLabel:GetText(), "1,000" )
+	check( "the right-hand readout too, at full", b.pctLabel:GetForeColor().R, dark.R )
+
+	-- the fill drops away from under the right-hand readout but not the left
+	player:SetMorale( 800 )
+	check( "the readout over the track goes back to white", b.pctLabel:GetForeColor().R, s.colorText.R )
+	check( "with a black outline again",                    b.pctLabel:GetOutlineColor().R, 0 )
+	check( "the readout still over the fill stays dark",    b.valueLabel:GetForeColor().R, dark.R )
+
+	local recoloured = stub.Counted( b.valueLabel, "SetText" )
+	player:SetMorale( 790 )
+	player:SetMorale( 780 )
+	check( "the colour is not re-applied while nothing flips",
+		stub.Counted( b.valueLabel, "SetText" ) - recoloured <= 2, true )
+
+	-- into the danger band, whose red is dark: the left readout goes back to white
+	player:SetMorale( 100 )
+	check( "dark red takes white text", b.valueLabel:GetForeColor().R, s.colorText.R )
+
+	s.textContrast = false
+	GRISTLE.ApplyAll()
+	player:SetMorale( 1000 )
+	check( "with contrast off the text stays white", b.valueLabel:GetForeColor().R, s.colorText.R )
+	s.textContrast = true
+
+	-- blend ----------------------------------------------------------------------------------------
+
+	s.colorMorale = { R = 0, G = 1, B = 0 }
+	s.colorMoraleWarn = { R = 1, G = 1, B = 0 }
+	s.colorMoraleDanger = { R = 1, G = 0, B = 0 }
+	s.colorBlend = true
+	GRISTLE.ApplyAll()
+
+	player:SetMorale( 1000 )
+	checkNear( "blend at full is the morale colour", b.fill:GetBackColor().R, 0 )
+	player:SetMorale( 750 )
+	checkNear( "halfway to warn is halfway between", b.fill:GetBackColor().R, 0.5 )
+	player:SetMorale( 500 )
+	checkNear( "at warn it is the warn colour",       b.fill:GetBackColor().G, 1 )
+	-- below warn the colour holds: only the healthy half slides
+	player:SetMorale( 375 )
+	checkNear( "between warn and danger it holds the warn colour", b.fill:GetBackColor().G, 1 )
+	checkNear( "all of it",                                        b.fill:GetBackColor().R, 1 )
+
+	local held = stub.Counted( b.fill, "SetBackColor" )
+	player:SetMorale( 360 )
+	player:SetMorale( 300 )
+	check( "and is not re-set while it holds", stub.Counted( b.fill, "SetBackColor" ), held )
+
+	-- danger is not faded into: one step over the line and it is fully red
+	player:SetMorale( 251 )
+	checkNear( "just above danger is still the warn colour", b.fill:GetBackColor().G, 1 )
+	player:SetMorale( 250 )
+	checkNear( "at danger it is the danger colour, fully",   b.fill:GetBackColor().G, 0 )
+	checkNear( "with nothing of warn left in it",            b.fill:GetBackColor().R, 1 )
+	player:SetMorale( 100 )
+	checkNear( "below danger it stays the danger colour",    b.fill:GetBackColor().G, 0 )
+
+	local blended = stub.Counted( b.fill, "SetBackColor" )
+	player:SetMorale( 101 )
+	player:SetMorale( 102 )
+	check( "and is not re-set while it holds either", stub.Counted( b.fill, "SetBackColor" ), blended )
+
+	player:SetMorale( 800 )
+	blended = stub.Counted( b.fill, "SetBackColor" )
+	player:SetMorale( 801 )
+	player:SetMorale( 802 )
+	check( "the slide is set once per whole percent, not per event",
+		stub.Counted( b.fill, "SetBackColor" ), blended )
+
+	s.colorBlend = false
+	GRISTLE.ApplyAll()
+	player:SetMorale( 750 )
+	checkNear( "blend off goes back to hard bands", b.fill:GetBackColor().R, 0 )
+
+	-- the two readouts share one weight -------------------------------------------------------------
+
+	s.boldValue = true
+	s.fontSize, s.percentFontSize = 16, 14
+	GRISTLE.ApplyAll()
+	check( "with bold on, the number is bold",          b.valueLabel:GetFont(), "font:VerdanaBold16" )
+	check( "and so is the percentage beside it",        b.pctLabel:GetFont(),   "font:VerdanaBold16" )
+
+	s.boldValue = false
+	GRISTLE.ApplyAll()
+	check( "with bold off, the number keeps its size",  b.valueLabel:GetFont(), "font:Verdana16" )
+	check( "and the percentage keeps its own",          b.pctLabel:GetFont(),   "font:Verdana14" )
+
+	s.boldValue = true
+	GRISTLE.ApplyAll()
+
+	-- the hex boxes in the options panel -----------------------------------------------------------
+
+	-- the colour rows come after the template boxes; the first of them is Morale
+	local moraleHex = boxes[9]
+
+	moraleHex:SetText( "FF0" )
+	moraleHex.TextChanged( moraleHex, {} )
+	checkNear( "half a code is not committed", s.colorMorale.R, 0 )
+
+	moraleHex:SetText( "#ff0000" )
+	moraleHex.TextChanged( moraleHex, {} )
+	checkNear( "a whole code is", s.colorMorale.R, 1 )
+	checkNear( "every channel of it", s.colorMorale.G, 0 )
+
+	local saved = Turbine.PluginData.Load( Turbine.DataScope.Character, "gristleSettings" )
+	checkNear( "and reaches the savefile", tonumber( saved.colorMorale.R ), 1 )
+
+	player:SetMorale( 1000 )
+	checkNear( "and the bar", b.fill:GetBackColor().R, 1 )
+
+	-- back to stock for whatever runs after this
+	for _, key in ipairs( { "colorMorale", "colorMoraleWarn", "colorMoraleDanger" } ) do
+		s[ key ] = GRISTLE.DeepCopy( GRISTLE.Defaults[ key ] )
+	end
+	GRISTLE.Save()
+	GRISTLE.ApplyAll()
+	player:SetMorale( 1000 )
+
+end
 
 ---------------------------------------------------------------------------------------------------
 section( "teardown" )

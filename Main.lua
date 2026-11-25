@@ -1,10 +1,10 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - replacement morale and power bars for the player and the current target
+-- Gristle - replacement morale and power bars for the player and the current target
 ---------------------------------------------------------------------------------------------------
--- Sinew only draws the bars. Hiding the stock frames is the job of a companion UI skin, which lives
+-- Gristle only draws the bars. Hiding the stock frames is the job of a companion UI skin, which lives
 -- in <Documents>/The Lord of the Rings Online/ui/skins/ and is selected under Options -> UI
--- Settings. Which skin that is has changed more than once -- NoVitals, then EffectsOnly, now
--- BlankVitals -- so read that folder's README rather than trusting a name written down here.
+-- Settings. That skin is EffectsOnly (ui/skins/EffectsOnly/, formerly BlankVitals): it removes
+-- everything on both stock plates except the buff and debuff trays. Its README is the reference.
 --
 -- That split is not a style choice. The one Lua call that can hide these frames,
 -- Turbine.UI.Lotro.LotroUI.SetEnabled( LotroUIElement.Vitals, false ), has no sub-element
@@ -18,32 +18,36 @@ import "Turbine.Gameplay"
 import "Turbine.UI"
 import "Turbine.UI.Lotro"
 
--- load order is explicit and fragile: Constants declares the SINEW namespace everything else hangs
+-- load order is explicit and fragile: Constants declares the GRISTLE namespace everything else hangs
 -- off, Utils is used by every module below it, and Bar needs the Updater to exist before it can
 -- register a fade.
-import "Sinew.Constants"
-import "Sinew.Utils"
-import "Sinew.Format"
-import "Sinew.Updater"
-import "Sinew.Bar"
-import "Sinew.NameRow"
-import "Sinew.VitalWindow"
-import "Sinew.SelfWindow"
-import "Sinew.TargetWindow"
-import "Sinew.OptionsPanel"
+import "Gristle.Constants"
+import "Gristle.Utils"
+import "Gristle.Format"
+import "Gristle.Updater"
+import "Gristle.Bar"
+import "Gristle.NameRow"
+import "Gristle.VitalWindow"
+import "Gristle.SelfWindow"
+import "Gristle.TargetWindow"
+import "Gristle.OptionsPanel"
 
 ---------------------------------------------------------------------------------------------------
 -- persistence
 ---------------------------------------------------------------------------------------------------
 
-local SAVE_KEY = "sinewSettings"
+local SAVE_KEY = "gristleSettings"
 
-local euroClient = SINEW.IsEuroClient()
+-- the plugin was called Sinew before 1.3.0. A scope with no Gristle save yet falls back to the old
+-- file once; the next save writes it under the new key, and the old file is never touched again
+local LEGACY_SAVE_KEY = "sinewSettings"
+
+local euroClient = GRISTLE.IsEuroClient()
 
 local function WriteScope( scope, data )
 
 	if euroClient then
-		data = SINEW.ConvertToEuro( data )
+		data = GRISTLE.ConvertToEuro( data )
 	end
 
 	Turbine.PluginData.Save( scope, SAVE_KEY, data )
@@ -54,8 +58,12 @@ local function LoadScope( scope )
 
 	local data = Turbine.PluginData.Load( scope, SAVE_KEY )
 
+	if data == nil then
+		data = Turbine.PluginData.Load( scope, LEGACY_SAVE_KEY )
+	end
+
 	if data ~= nil and euroClient then
-		data = SINEW.ConvertFromEuro( data )
+		data = GRISTLE.ConvertFromEuro( data )
 	end
 
 	return data
@@ -71,9 +79,9 @@ local globalCache = LoadScope( Turbine.DataScope.Account )
 -- account copy to protect or there was not
 local mirrorToGlobal = ( globalCache == nil )
 
-function SINEW.Save()
+function GRISTLE.Save()
 
-	local data = SINEW.DeepCopy( SINEW.Settings )
+	local data = GRISTLE.DeepCopy( GRISTLE.Settings )
 
 	WriteScope( Turbine.DataScope.Character, data )
 
@@ -84,13 +92,13 @@ function SINEW.Save()
 
 end
 
-function SINEW.HasGlobalSettings()
+function GRISTLE.HasGlobalSettings()
 	return globalCache ~= nil
 end
 
-function SINEW.SaveGlobalSettings()
+function GRISTLE.SaveGlobalSettings()
 
-	local data = SINEW.DeepCopy( SINEW.Settings )
+	local data = GRISTLE.DeepCopy( GRISTLE.Settings )
 
 	WriteScope( Turbine.DataScope.Account, data )
 	globalCache = data
@@ -99,17 +107,17 @@ function SINEW.SaveGlobalSettings()
 
 end
 
-function SINEW.LoadGlobalSettings()
+function GRISTLE.LoadGlobalSettings()
 
 	if globalCache == nil then
 		return false
 	end
 
-	SINEW.Settings = SINEW.DeepCopy( globalCache )
+	GRISTLE.Settings = GRISTLE.DeepCopy( globalCache )
 
-	SINEW.NormaliseSettings()
-	SINEW.Save()
-	SINEW.ApplyAll()
+	GRISTLE.NormaliseSettings()
+	GRISTLE.Save()
+	GRISTLE.ApplyAll()
 
 	return true
 
@@ -167,7 +175,7 @@ end
 local function clampColor( value, fallback )
 
 	if type( value ) ~= "table" then
-		return SINEW.DeepCopy( fallback )
+		return GRISTLE.DeepCopy( fallback )
 	end
 
 	return {
@@ -178,18 +186,18 @@ local function clampColor( value, fallback )
 
 end
 
-function SINEW.NormaliseSettings()
+function GRISTLE.NormaliseSettings()
 
-	local settings = SINEW.Settings
+	local settings = GRISTLE.Settings
 
 	-- read before the defaults are filled in, or a savefile with no version at all looks current
 	local from = tonumber( settings.version ) or 0
 
-	for key, value in pairs( SINEW.Defaults ) do
+	for key, value in pairs( GRISTLE.Defaults ) do
 		if settings[ key ] == nil then
 			-- copied, not aliased: the defaults table holds the shared palette tables, and handing a
-			-- live reference to the settings would let the options panel edit SINEW.Palette itself
-			settings[ key ] = SINEW.DeepCopy( value )
+			-- live reference to the settings would let the options panel edit GRISTLE.Palette itself
+			settings[ key ] = GRISTLE.DeepCopy( value )
 		end
 	end
 
@@ -248,26 +256,26 @@ function SINEW.NormaliseSettings()
 	settings.nameAlignRight = nil
 
 	-- geometry
-	settings.selfWidth         = clamp( settings.selfWidth,         40, 1200, SINEW.Defaults.selfWidth )
-	settings.selfBarHeight     = clamp( settings.selfBarHeight,      6,  160, SINEW.Defaults.selfBarHeight )
-	settings.selfPowerHeight   = clamp( settings.selfPowerHeight,    1,   60, SINEW.Defaults.selfPowerHeight )
-	settings.selfGap           = clamp( settings.selfGap,            0,   40, SINEW.Defaults.selfGap )
+	settings.selfWidth         = clamp( settings.selfWidth,         40, 1200, GRISTLE.Defaults.selfWidth )
+	settings.selfBarHeight     = clamp( settings.selfBarHeight,      6,  160, GRISTLE.Defaults.selfBarHeight )
+	settings.selfPowerHeight   = clamp( settings.selfPowerHeight,    1,   60, GRISTLE.Defaults.selfPowerHeight )
+	settings.selfGap           = clamp( settings.selfGap,            0,   40, GRISTLE.Defaults.selfGap )
 
-	settings.targetWidth       = clamp( settings.targetWidth,       40, 1200, SINEW.Defaults.targetWidth )
-	settings.targetBarHeight   = clamp( settings.targetBarHeight,    6,  160, SINEW.Defaults.targetBarHeight )
-	settings.targetPowerHeight = clamp( settings.targetPowerHeight,  1,   60, SINEW.Defaults.targetPowerHeight )
-	settings.targetGap         = clamp( settings.targetGap,          0,   40, SINEW.Defaults.targetGap )
+	settings.targetWidth       = clamp( settings.targetWidth,       40, 1200, GRISTLE.Defaults.targetWidth )
+	settings.targetBarHeight   = clamp( settings.targetBarHeight,    6,  160, GRISTLE.Defaults.targetBarHeight )
+	settings.targetPowerHeight = clamp( settings.targetPowerHeight,  1,   60, GRISTLE.Defaults.targetPowerHeight )
+	settings.targetGap         = clamp( settings.targetGap,          0,   40, GRISTLE.Defaults.targetGap )
 
 	-- positions are ratios of the screen
-	settings.selfLeft   = clamp( settings.selfLeft,   0, 1, SINEW.Defaults.selfLeft )
-	settings.selfTop    = clamp( settings.selfTop,    0, 1, SINEW.Defaults.selfTop )
-	settings.targetLeft = clamp( settings.targetLeft, 0, 1, SINEW.Defaults.targetLeft )
-	settings.targetTop  = clamp( settings.targetTop,  0, 1, SINEW.Defaults.targetTop )
+	settings.selfLeft   = clamp( settings.selfLeft,   0, 1, GRISTLE.Defaults.selfLeft )
+	settings.selfTop    = clamp( settings.selfTop,    0, 1, GRISTLE.Defaults.selfTop )
+	settings.targetLeft = clamp( settings.targetLeft, 0, 1, GRISTLE.Defaults.targetLeft )
+	settings.targetTop  = clamp( settings.targetTop,  0, 1, GRISTLE.Defaults.targetTop )
 
 	-- text
-	settings.fontSize        = clamp( settings.fontSize,        8, 23, SINEW.Defaults.fontSize )
-	settings.percentFontSize = clamp( settings.percentFontSize, 8, 23, SINEW.Defaults.percentFontSize )
-	settings.nameFontSize    = clamp( settings.nameFontSize,    8, 23, SINEW.Defaults.nameFontSize )
+	settings.fontSize        = clamp( settings.fontSize,        8, 23, GRISTLE.Defaults.fontSize )
+	settings.percentFontSize = clamp( settings.percentFontSize, 8, 23, GRISTLE.Defaults.percentFontSize )
+	settings.nameFontSize    = clamp( settings.nameFontSize,    8, 23, GRISTLE.Defaults.nameFontSize )
 
 	-- readout templates. An empty one is valid and means "nothing in this slot", so these are
 	-- coerced and capped rather than defaulted: falling back on a blank would silently undo the one
@@ -276,17 +284,28 @@ function SINEW.NormaliseSettings()
 		"selfFormatBarLeft",   "selfFormatBarRight",   "selfFormatNameMain",   "selfFormatNameAside",
 		"targetFormatBarLeft", "targetFormatBarRight", "targetFormatNameMain", "targetFormatNameAside",
 	} ) do
-		settings[ key ] = clampFormat( settings[ key ], SINEW.Defaults[ key ] )
+		settings[ key ] = clampFormat( settings[ key ], GRISTLE.Defaults[ key ] )
 	end
 
 	-- behaviour
-	settings.flashDuration = clamp( settings.flashDuration, 0.05, 2.0,  SINEW.Defaults.flashDuration )
-	settings.warnPercent   = clamp( settings.warnPercent,      2,  99,  SINEW.Defaults.warnPercent )
-	settings.dangerPercent = clamp( settings.dangerPercent,    1,  98,  SINEW.Defaults.dangerPercent )
+	settings.flashDuration = clamp( settings.flashDuration, 0.05, 2.0,  GRISTLE.Defaults.flashDuration )
+	settings.warnPercent   = clamp( settings.warnPercent,      2,  99,  GRISTLE.Defaults.warnPercent )
+	settings.dangerPercent = clamp( settings.dangerPercent,    1,  98,  GRISTLE.Defaults.dangerPercent )
 
 	-- floored at 0.05 rather than 0: a HUD turned all the way down is invisible, and the panel that
 	-- would turn it back up is reached through a window you can no longer see
-	settings.opacity       = clamp( settings.opacity,       0.05, 1.0,  SINEW.Defaults.opacity )
+	settings.opacity       = clamp( settings.opacity,       0.05, 1.0,  GRISTLE.Defaults.opacity )
+
+	-- appearance. Capped at half: past that the light strip stops reading as a sheen and starts
+	-- reading as a second, white bar
+	settings.sheen = clamp( settings.sheen, 0, 0.5, GRISTLE.Defaults.sheen )
+
+	-- a savefile is hand-editable, and a switch holding anything but true or false would read as on
+	for _, key in ipairs( { "showTicks", "textContrast", "colorBlend", "selfShowClassIcon", "targetShowClassIcon" } ) do
+		if type( settings[ key ] ) ~= "boolean" then
+			settings[ key ] = GRISTLE.Defaults[ key ]
+		end
+	end
 
 	-- danger has to be the tighter of the two or the warn band can never be reached
 	if settings.dangerPercent >= settings.warnPercent then
@@ -294,27 +313,28 @@ function SINEW.NormaliseSettings()
 	end
 
 	-- colours
-	settings.colorTrack        = clampColor( settings.colorTrack,        SINEW.Palette.track )
-	settings.colorBorder       = clampColor( settings.colorBorder,       SINEW.Palette.border )
-	settings.colorMorale       = clampColor( settings.colorMorale,       SINEW.Palette.morale )
-	settings.colorMoraleWarn   = clampColor( settings.colorMoraleWarn,   SINEW.Palette.moraleWarn )
-	settings.colorMoraleDanger = clampColor( settings.colorMoraleDanger, SINEW.Palette.moraleDanger )
-	settings.colorPower        = clampColor( settings.colorPower,        SINEW.Palette.power )
-	settings.colorTemp         = clampColor( settings.colorTemp,         SINEW.Palette.temp )
-	settings.colorFlash        = clampColor( settings.colorFlash,        SINEW.Palette.flash )
-	settings.colorText         = clampColor( settings.colorText,         SINEW.Palette.text )
-	settings.colorName         = clampColor( settings.colorName,         SINEW.Palette.name )
+	settings.colorTrack        = clampColor( settings.colorTrack,        GRISTLE.Palette.track )
+	settings.colorBorder       = clampColor( settings.colorBorder,       GRISTLE.Palette.border )
+	settings.colorMorale       = clampColor( settings.colorMorale,       GRISTLE.Palette.morale )
+	settings.colorMoraleWarn   = clampColor( settings.colorMoraleWarn,   GRISTLE.Palette.moraleWarn )
+	settings.colorMoraleDanger = clampColor( settings.colorMoraleDanger, GRISTLE.Palette.moraleDanger )
+	settings.colorPower        = clampColor( settings.colorPower,        GRISTLE.Palette.power )
+	settings.colorTemp         = clampColor( settings.colorTemp,         GRISTLE.Palette.temp )
+	settings.colorFlash        = clampColor( settings.colorFlash,        GRISTLE.Palette.flash )
+	settings.colorText         = clampColor( settings.colorText,         GRISTLE.Palette.text )
+	settings.colorName         = clampColor( settings.colorName,         GRISTLE.Palette.name )
+	settings.colorTextDark     = clampColor( settings.colorTextDark,     GRISTLE.Palette.textDark )
 
 	settings.version = 4
 
 end
 
-function SINEW.ResetSettings()
+function GRISTLE.ResetSettings()
 
-	SINEW.Settings = {}
-	SINEW.NormaliseSettings()
-	SINEW.Save()
-	SINEW.ApplyAll()
+	GRISTLE.Settings = {}
+	GRISTLE.NormaliseSettings()
+	GRISTLE.Save()
+	GRISTLE.ApplyAll()
 
 end
 
@@ -327,10 +347,10 @@ end
 -- ApplyLayout clears every bar's dirty-flag cache, which blanks the bars until the next vital
 -- event. A move must not pay that, so turning the mirror on or dragging a window goes through here.
 ---------------------------------------------------------------------------------------------------
-function SINEW.ApplyPositions()
+function GRISTLE.ApplyPositions()
 
-	if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyPosition()   end
-	if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyPosition() end
+	if GRISTLE.Self.window   ~= nil then GRISTLE.Self.window:ApplyPosition()   end
+	if GRISTLE.Target.window ~= nil then GRISTLE.Target.window:ApplyPosition() end
 
 end
 
@@ -345,16 +365,16 @@ end
 -- the result against what is already on screen, so a keystroke that does not change the rendered
 -- text costs nothing at all.
 ---------------------------------------------------------------------------------------------------
-function SINEW.ApplyFormats()
+function GRISTLE.ApplyFormats()
 
-	if SINEW.Self.window   ~= nil then SINEW.Self.window:RenderText()   end
-	if SINEW.Target.window ~= nil then SINEW.Target.window:RenderText() end
+	if GRISTLE.Self.window   ~= nil then GRISTLE.Self.window:RenderText()   end
+	if GRISTLE.Target.window ~= nil then GRISTLE.Target.window:RenderText() end
 
 end
 
-function SINEW.ApplyAll()
+function GRISTLE.ApplyAll()
 
-	local windows = { SINEW.Self.window, SINEW.Target.window }
+	local windows = { GRISTLE.Self.window, GRISTLE.Target.window }
 
 	for i = 1, #windows do
 
@@ -370,39 +390,39 @@ function SINEW.ApplyAll()
 	end
 
 	-- the layout cleared every dirty-flag cache, so the bars are empty until the data is pushed again
-	SINEW.Self.Refresh()
-	SINEW.Target.Refresh()
+	GRISTLE.Self.Refresh()
+	GRISTLE.Target.Refresh()
 
-	if SINEW.Self.window ~= nil then
-		SINEW.Self.window:SetShown( true )
+	if GRISTLE.Self.window ~= nil then
+		GRISTLE.Self.window:SetShown( true )
 	end
 
 	-- in move mode the target window stays up with nothing targeted, or changing a setting from the
 	-- options panel would take away the thing you were about to drag
-	if SINEW.Target.window ~= nil then
+	if GRISTLE.Target.window ~= nil then
 		if MOVE then
-			SINEW.Target.window:ForceShown()
+			GRISTLE.Target.window:ForceShown()
 		else
-			SINEW.Target.window:SetShown( SINEW.Target.entity ~= nil )
+			GRISTLE.Target.window:SetShown( GRISTLE.Target.entity ~= nil )
 		end
 	end
 
 end
 
-function SINEW.SetMoveMode( enabled )
+function GRISTLE.SetMoveMode( enabled )
 
 	MOVE = enabled and true or false
 
-	if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyMove()   end
-	if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyMove() end
+	if GRISTLE.Self.window   ~= nil then GRISTLE.Self.window:ApplyMove()   end
+	if GRISTLE.Target.window ~= nil then GRISTLE.Target.window:ApplyMove() end
 
 	-- the target window is normally hidden without a target, which in move mode would leave nothing
 	-- to grab, so it is forced visible for as long as the handles are up
-	if SINEW.Target.window ~= nil then
+	if GRISTLE.Target.window ~= nil then
 		if MOVE then
-			SINEW.Target.window:ForceShown()
+			GRISTLE.Target.window:ForceShown()
 		else
-			SINEW.Target.window:SetShown( SINEW.Target.entity ~= nil )
+			GRISTLE.Target.window:SetShown( GRISTLE.Target.entity ~= nil )
 		end
 	end
 
@@ -412,32 +432,32 @@ end
 -- start up
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Settings = LoadScope( Turbine.DataScope.Character )
+GRISTLE.Settings = LoadScope( Turbine.DataScope.Character )
 
-if SINEW.Settings == nil then
+if GRISTLE.Settings == nil then
 	-- no character file yet: inherit the account copy if there is one, so a new character starts
 	-- where the last one left off
-	SINEW.Settings = globalCache ~= nil and SINEW.DeepCopy( globalCache ) or {}
+	GRISTLE.Settings = globalCache ~= nil and GRISTLE.DeepCopy( globalCache ) or {}
 end
 
-SINEW.NormaliseSettings()
+GRISTLE.NormaliseSettings()
 
-SINEW.Self.Create()
-SINEW.Target.Create()
+GRISTLE.Self.Create()
+GRISTLE.Target.Create()
 
 -- wired after both exist, because the target window does not exist while the player one is built.
 -- This is the only coupling between the two: dragging the player frame has to carry its mirror.
-SINEW.Self.window.mirrorFollower = SINEW.Target.window
+GRISTLE.Self.window.mirrorFollower = GRISTLE.Target.window
 
 -- the target's position depends on the player's once mirroring is on, and the player window was
 -- laid out before the target existed to be mirrored
-SINEW.ApplyPositions()
+GRISTLE.ApplyPositions()
 
 ---------------------------------------------------------------------------------------------------
 -- options panel
 ---------------------------------------------------------------------------------------------------
 
-local optionsPanel = SINEW.CreateOptionsPanel()
+local optionsPanel = GRISTLE.CreateOptionsPanel()
 
 if plugin ~= nil then
 	plugin.GetOptionsPanel = function()
@@ -452,13 +472,13 @@ end
 local command = Turbine.ShellCommand()
 
 local function Usage()
-	Turbine.Shell.WriteLine( "Sinew v" .. SINEW.Version )
-	Turbine.Shell.WriteLine( "  /sinew move    - toggle drag mode for both bars" )
-	Turbine.Shell.WriteLine( "  /sinew self    - show or hide the player bars" )
-	Turbine.Shell.WriteLine( "  /sinew target  - show or hide the target bars" )
-	Turbine.Shell.WriteLine( "  /sinew format  - list the tags a readout can contain" )
-	Turbine.Shell.WriteLine( "  /sinew debug   - print what the client reports for your vitals" )
-	Turbine.Shell.WriteLine( "  /sinew reset   - restore every setting to its default" )
+	Turbine.Shell.WriteLine( "Gristle v" .. GRISTLE.Version )
+	Turbine.Shell.WriteLine( "  /gristle move    - toggle drag mode for both bars" )
+	Turbine.Shell.WriteLine( "  /gristle self    - show or hide the player bars" )
+	Turbine.Shell.WriteLine( "  /gristle target  - show or hide the target bars" )
+	Turbine.Shell.WriteLine( "  /gristle format  - list the tags a readout can contain" )
+	Turbine.Shell.WriteLine( "  /gristle debug   - print what the client reports for your vitals" )
+	Turbine.Shell.WriteLine( "  /gristle reset   - restore every setting to its default" )
 end
 
 ---------------------------------------------------------------------------------------------------
@@ -473,21 +493,21 @@ local function Formats()
 
 	local line = Turbine.Shell.WriteLine
 
-	line( "Sinew readouts - four per frame, each one a line of text with tags in it." )
+	line( "Gristle readouts - four per frame, each one a line of text with tags in it." )
 	line( "Set them in the options panel. Clear one to drop that readout entirely." )
 
 	line( "  tags:" )
 
-	for i = 1, #SINEW.Format.Help do
-		local entry = SINEW.Format.Help[i]
+	for i = 1, #GRISTLE.Format.Help do
+		local entry = GRISTLE.Format.Help[i]
 		line( "    " .. entry[1] .. string.rep( " ", math.max( 1, 11 - string.len( entry[1] ) ) )
 			.. "- " .. entry[2] )
 	end
 
 	line( "  modifiers:" )
 
-	for i = 1, #SINEW.Format.Modifiers do
-		local entry = SINEW.Format.Modifiers[i]
+	for i = 1, #GRISTLE.Format.Modifiers do
+		local entry = GRISTLE.Format.Modifiers[i]
 		line( "    " .. entry[1] .. "  - " .. entry[2] )
 	end
 
@@ -496,14 +516,14 @@ local function Formats()
 
 	line( "  yours now:" )
 
-	line( "    player bar   '" .. tostring( SINEW.Settings.selfFormatBarLeft ) .. "'  /  '"
-		.. tostring( SINEW.Settings.selfFormatBarRight ) .. "'" )
-	line( "    player name  '" .. tostring( SINEW.Settings.selfFormatNameMain ) .. "'  /  '"
-		.. tostring( SINEW.Settings.selfFormatNameAside ) .. "'" )
-	line( "    target bar   '" .. tostring( SINEW.Settings.targetFormatBarLeft ) .. "'  /  '"
-		.. tostring( SINEW.Settings.targetFormatBarRight ) .. "'" )
-	line( "    target name  '" .. tostring( SINEW.Settings.targetFormatNameMain ) .. "'  /  '"
-		.. tostring( SINEW.Settings.targetFormatNameAside ) .. "'" )
+	line( "    player bar   '" .. tostring( GRISTLE.Settings.selfFormatBarLeft ) .. "'  /  '"
+		.. tostring( GRISTLE.Settings.selfFormatBarRight ) .. "'" )
+	line( "    player name  '" .. tostring( GRISTLE.Settings.selfFormatNameMain ) .. "'  /  '"
+		.. tostring( GRISTLE.Settings.selfFormatNameAside ) .. "'" )
+	line( "    target bar   '" .. tostring( GRISTLE.Settings.targetFormatBarLeft ) .. "'  /  '"
+		.. tostring( GRISTLE.Settings.targetFormatBarRight ) .. "'" )
+	line( "    target name  '" .. tostring( GRISTLE.Settings.targetFormatNameMain ) .. "'  /  '"
+		.. tostring( GRISTLE.Settings.targetFormatNameAside ) .. "'" )
 
 end
 
@@ -520,7 +540,7 @@ local function Debug()
 
 	local line = Turbine.Shell.WriteLine
 
-	line( "Sinew v" .. SINEW.Version .. " - what the client reports" )
+	line( "Gristle v" .. GRISTLE.Version .. " - what the client reports" )
 
 	---------------------------------------------------------------------------------------------
 	-- the raw engine answers
@@ -535,23 +555,64 @@ local function Debug()
 	}
 
 	for i = 1, #getters do
-		line( "    " .. getters[i] .. "  ->  " .. SINEW.DescribeGetter( LOCALPLAYER, getters[i] ) )
+		line( "    " .. getters[i] .. "  ->  " .. GRISTLE.DescribeGetter( LOCALPLAYER, getters[i] ) )
 	end
 
 	---------------------------------------------------------------------------------------------
-	-- what Sinew made of them
+	-- the class icon, on both frames
 	---------------------------------------------------------------------------------------------
-	local morale, maxMorale = SINEW.ReadVital( LOCALPLAYER, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
-	local power,  maxPower  = SINEW.ReadVital( LOCALPLAYER, "GetPower",  "GetMaxPower",  "GetBaseMaxPower" )
+	-- A missing icon is one of four things: the entity has no GetClass, it answered something that
+	-- is not a class number, the number has no emblem in GRISTLE.ClassIcons, or the icon was set and
+	-- is simply not on screen. Each line below rules one of them in or out.
+	---------------------------------------------------------------------------------------------
+	local function describeIcon( label, entity, frame )
 
-	line( "  what Sinew read:" )
+		line( "  " .. label .. " class icon:" )
+
+		if entity == nil then
+			line( "    no entity" )
+			return
+		end
+
+		line( "    GetClass   ->  " .. GRISTLE.DescribeGetter( entity, "GetClass" ) )
+		line( "    GetAlignment ->  " .. GRISTLE.DescribeGetter( entity, "GetAlignment" ) )
+
+		local class = GRISTLE.ReadClass( entity )
+		line( "    read as " .. tostring( class ) .. "  ->  emblem "
+			.. tostring( class ~= nil and GRISTLE.ClassIcons[ class ] or nil ) )
+
+		if frame == nil then
+			line( "    the window does not exist" )
+			return
+		end
+
+		local row = frame.nameRow
+		local x, y = row.icon:GetPosition()
+		line( "    wanted " .. tostring( row.wantedImage ) .. ", set " .. tostring( row.iconImage )
+			.. ", shown " .. tostring( row.iconShown ) .. ", visible " .. tostring( row.icon:IsVisible() ) )
+		line( "    at " .. tostring( x ) .. "," .. tostring( y ) .. "  size "
+			.. row.icon:GetWidth() .. " x " .. row.icon:GetHeight()
+			.. "  in a window " .. frame.window:GetWidth() .. " x " .. frame.window:GetHeight() )
+
+	end
+
+	describeIcon( "player", LOCALPLAYER, GRISTLE.Self.window )
+	describeIcon( "target", GRISTLE.Target.entity, GRISTLE.Target.window )
+
+	---------------------------------------------------------------------------------------------
+	-- what Gristle made of them
+	---------------------------------------------------------------------------------------------
+	local morale, maxMorale = GRISTLE.ReadVital( LOCALPLAYER, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
+	local power,  maxPower  = GRISTLE.ReadVital( LOCALPLAYER, "GetPower",  "GetMaxPower",  "GetBaseMaxPower" )
+
+	line( "  what Gristle read:" )
 	line( "    morale  " .. tostring( morale ) .. " / " .. tostring( maxMorale ) )
 	line( "    power   " .. tostring( power )  .. " / " .. tostring( maxPower ) )
 
 	---------------------------------------------------------------------------------------------
 	-- what the morale bar then did with them
 	---------------------------------------------------------------------------------------------
-	local window = SINEW.Self.window
+	local window = GRISTLE.Self.window
 
 	if window == nil then
 		line( "  the player window does not exist" )
@@ -568,17 +629,17 @@ local function Debug()
 	line( "    fill z     " .. tostring( bar.fill:GetZOrder() )
 		.. ", clip z " .. tostring( bar.clip:GetZOrder() )
 		.. ", track z " .. tostring( bar.track:GetZOrder() ) )
-	line( "    fill color " .. SINEW.DescribeColor( bar.fill:GetBackColor() ) )
-	line( "    track color " .. SINEW.DescribeColor( bar.track:GetBackColor() ) )
+	line( "    fill color " .. GRISTLE.DescribeColor( bar.fill:GetBackColor() ) )
+	line( "    track color " .. GRISTLE.DescribeColor( bar.track:GetBackColor() ) )
 
 	if bar.valueLabel ~= nil then
 		-- both the template and what it rendered to: a blank readout is either an empty template or a
 		-- template whose every tag came back empty, and those look identical on screen
-		line( "    left  '" .. tostring( SINEW.Settings.selfFormatBarLeft ) .. "'  ->  '"
+		line( "    left  '" .. tostring( GRISTLE.Settings.selfFormatBarLeft ) .. "'  ->  '"
 			.. tostring( bar.valueLabel:GetText() ) .. "'" )
-		line( "    right '" .. tostring( SINEW.Settings.selfFormatBarRight ) .. "'  ->  '"
+		line( "    right '" .. tostring( GRISTLE.Settings.selfFormatBarRight ) .. "'  ->  '"
 			.. tostring( bar.pctLabel:GetText() ) .. "'" )
-		line( "    text color  " .. SINEW.DescribeColor( bar.valueLabel:GetForeColor() ) )
+		line( "    text color  " .. GRISTLE.DescribeColor( bar.valueLabel:GetForeColor() ) )
 		line( "    labels z    " .. tostring( bar.labelBack:GetZOrder() )
 			.. "   visible " .. tostring( bar.labelBack:IsVisible() ) )
 	else
@@ -593,9 +654,9 @@ local function Debug()
 	line( "  the name row:" )
 	line( "    shown      " .. tostring( window.showName )
 		.. "   window visible " .. tostring( row.clip:IsVisible() ) )
-	line( "    main  '" .. tostring( SINEW.Settings.selfFormatNameMain ) .. "'  ->  '"
+	line( "    main  '" .. tostring( GRISTLE.Settings.selfFormatNameMain ) .. "'  ->  '"
 		.. tostring( row.nameLabel:GetText() ) .. "'" )
-	line( "    aside '" .. tostring( SINEW.Settings.selfFormatNameAside ) .. "'  ->  '"
+	line( "    aside '" .. tostring( GRISTLE.Settings.selfFormatNameAside ) .. "'  ->  '"
 		.. tostring( row.extraLabel:GetText() ) .. "'" )
 	line( "    size       " .. row.width .. " x " .. row.height
 		.. "   clip " .. row.clip:GetWidth() .. " x " .. row.clip:GetHeight() )
@@ -611,8 +672,8 @@ local function Debug()
 	line( "    pow " .. tostring( context.pow ) .. "  maxpow " .. tostring( context.maxpow )
 		.. "  name '" .. tostring( context.name ) .. "'  level " .. tostring( context.level ) )
 
-	line( "  settings: abbreviateNumbers " .. tostring( SINEW.Settings.abbreviateNumbers )
-		.. ", opacity " .. tostring( SINEW.Settings.opacity ) )
+	line( "  settings: abbreviateNumbers " .. tostring( GRISTLE.Settings.abbreviateNumbers )
+		.. ", opacity " .. tostring( GRISTLE.Settings.opacity ) )
 	line( "  window: " .. window.window:GetWidth() .. " x " .. window.window:GetHeight()
 		.. "  visible " .. tostring( window.window:IsVisible() )
 		.. "  opacity " .. tostring( window.window:GetOpacity() ) )
@@ -621,27 +682,27 @@ end
 
 function command:Execute( cmd, args )
 
-	-- the argument string arrives raw, so "/sinew  move " has to reach the same branch as "/sinew move"
+	-- the argument string arrives raw, so "/gristle  move " has to reach the same branch as "/gristle move"
 	local name = string.lower( string.match( args or "", "^%s*(%S*)" ) or "" )
 
 	if name == "move" then
 
-		SINEW.SetMoveMode( not MOVE )
-		Turbine.Shell.WriteLine( "Sinew: drag mode " .. ( MOVE and "on" or "off" ) )
+		GRISTLE.SetMoveMode( not MOVE )
+		Turbine.Shell.WriteLine( "Gristle: drag mode " .. ( MOVE and "on" or "off" ) )
 
 	elseif name == "self" then
 
-		SINEW.Settings.selfVisible = not SINEW.Settings.selfVisible
-		SINEW.Save()
-		SINEW.Self.window:SetShown( true )
-		Turbine.Shell.WriteLine( "Sinew: player bars " .. ( SINEW.Settings.selfVisible and "shown" or "hidden" ) )
+		GRISTLE.Settings.selfVisible = not GRISTLE.Settings.selfVisible
+		GRISTLE.Save()
+		GRISTLE.Self.window:SetShown( true )
+		Turbine.Shell.WriteLine( "Gristle: player bars " .. ( GRISTLE.Settings.selfVisible and "shown" or "hidden" ) )
 
 	elseif name == "target" then
 
-		SINEW.Settings.targetVisible = not SINEW.Settings.targetVisible
-		SINEW.Save()
-		SINEW.Target.window:SetShown( SINEW.Target.entity ~= nil )
-		Turbine.Shell.WriteLine( "Sinew: target bars " .. ( SINEW.Settings.targetVisible and "shown" or "hidden" ) )
+		GRISTLE.Settings.targetVisible = not GRISTLE.Settings.targetVisible
+		GRISTLE.Save()
+		GRISTLE.Target.window:SetShown( GRISTLE.Target.entity ~= nil )
+		Turbine.Shell.WriteLine( "Gristle: target bars " .. ( GRISTLE.Settings.targetVisible and "shown" or "hidden" ) )
 
 	elseif name == "format" or name == "formats" then
 
@@ -653,13 +714,13 @@ function command:Execute( cmd, args )
 		local ok, err = pcall( Debug )
 
 		if not ok then
-			Turbine.Shell.WriteLine( "Sinew: debug failed - " .. tostring( err ) )
+			Turbine.Shell.WriteLine( "Gristle: debug failed - " .. tostring( err ) )
 		end
 
 	elseif name == "reset" then
 
-		SINEW.ResetSettings()
-		Turbine.Shell.WriteLine( "Sinew: settings reset" )
+		GRISTLE.ResetSettings()
+		Turbine.Shell.WriteLine( "Gristle: settings reset" )
 
 	else
 		Usage()
@@ -668,15 +729,15 @@ function command:Execute( cmd, args )
 end
 
 function command:GetHelp()
-	return "Sinew -- /sinew for the command list"
+	return "Gristle -- /gristle for the command list"
 end
 
 -- a reload can leave the previous registration pointing at a script state that no longer exists, so
 -- AddCommand is allowed to fail. Losing the command is survivable; throwing out of Main.lua is not.
-for _, name in ipairs( { "sinew" } ) do
+for _, name in ipairs( { "gristle" } ) do
 	local ok, err = pcall( Turbine.Shell.AddCommand, name, command )
 	if not ok then
-		Turbine.Shell.WriteLine( "Sinew: /" .. name .. " unavailable (" .. tostring( err ) .. ")" )
+		Turbine.Shell.WriteLine( "Gristle: /" .. name .. " unavailable (" .. tostring( err ) .. ")" )
 	end
 end
 
@@ -691,13 +752,13 @@ end
 if plugin ~= nil then
 	plugin.Unload = function()
 
-		SINEW.Self.Dispose()
-		SINEW.Target.Dispose()
-		SINEW.Updater.Dispose()
+		GRISTLE.Self.Dispose()
+		GRISTLE.Target.Dispose()
+		GRISTLE.Updater.Dispose()
 
 		pcall( Turbine.Shell.RemoveCommand, command )
 
 	end
 end
 
-Turbine.Shell.WriteLine( "Sinew v" .. SINEW.Version .. " loaded. /sinew for options." )
+Turbine.Shell.WriteLine( "Gristle v" .. GRISTLE.Version .. " loaded. /gristle for options." )

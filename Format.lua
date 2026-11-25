@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the readout templates
+-- Gristle - the readout templates
 ---------------------------------------------------------------------------------------------------
 -- A readout is a line of text with tags in it: "[cur]  [perc]" renders as "12,480  74%". Four
 -- templates per window - two inside the morale bar and two on the name row - replace what used to
@@ -25,7 +25,7 @@
 -- Clearing a template is how a readout is switched off, which is why there is no separate switch.
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Format = {}
+GRISTLE.Format = {}
 
 ---------------------------------------------------------------------------------------------------
 -- the tags
@@ -50,7 +50,7 @@ local function NumberTag( field )
 
 		if value == nil then return "" end
 
-		return SINEW.FormatValue( value, modifier )
+		return GRISTLE.FormatValue( value, modifier )
 
 	end
 
@@ -70,7 +70,7 @@ TAGS.temp = function( context, modifier )
 
 	if value == nil or value <= 0 then return "" end
 
-	return "+" .. SINEW.FormatValue( value, modifier )
+	return "+" .. GRISTLE.FormatValue( value, modifier )
 
 end
 
@@ -80,7 +80,7 @@ TAGS.maxtemp = function( context, modifier )
 
 	if value == nil or value <= 0 then return "" end
 
-	return SINEW.FormatValue( value, modifier )
+	return GRISTLE.FormatValue( value, modifier )
 
 end
 
@@ -92,7 +92,7 @@ TAGS.deficit = function( context, modifier )
 
 	if current == nil or max == nil or max - current <= 0 then return "" end
 
-	return "-" .. SINEW.FormatValue( max - current, modifier )
+	return "-" .. GRISTLE.FormatValue( max - current, modifier )
 
 end
 
@@ -104,7 +104,7 @@ local function PercentTag( currentField, maxField )
 
 		if current == nil or max == nil or max <= 0 then return "" end
 
-		return SINEW.FormatPercent( current, max, tonumber( modifier ) )
+		return GRISTLE.FormatPercent( current, max, tonumber( modifier ) )
 
 	end
 
@@ -118,7 +118,7 @@ TAGS.name = function( context )
 end
 
 -- the bare number, so the word in front of it is yours to choose - which is also the one piece of
--- localisation Sinew needs, since a German client wants "Stufe 150" rather than "Level 150"
+-- localisation Gristle needs, since a German client wants "Stufe 150" rather than "Level 150"
 TAGS.level = function( context )
 
 	local level = tonumber( context.level )
@@ -133,10 +133,10 @@ end
 -- the help text
 ---------------------------------------------------------------------------------------------------
 -- Ordered, because the table above is not, and this is the only documentation a player gets: it is
--- printed by /sinew format and abbreviated in the options panel. There is no tooltip to put it in.
+-- printed by /gristle format and abbreviated in the options panel. There is no tooltip to put it in.
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Format.Help = {
+GRISTLE.Format.Help = {
 	{ "[cur]",     "the current value - morale in the morale bar" },
 	{ "[max]",     "its maximum" },
 	{ "[perc]",    "the percentage, as 74%" },
@@ -150,7 +150,7 @@ SINEW.Format.Help = {
 	{ "[level]",   "their level, as a bare number. Blank for a chest or a door" },
 }
 
-SINEW.Format.Modifiers = {
+GRISTLE.Format.Modifiers = {
 	{ "[cur:short]", "always abbreviated - 12.5k" },
 	{ "[cur:full]",  "never abbreviated - 12,480" },
 	{ "[perc:1]",    "a decimal place on a percentage, up to [perc:2]" },
@@ -159,7 +159,7 @@ SINEW.Format.Modifiers = {
 ---------------------------------------------------------------------------------------------------
 -- render
 ---------------------------------------------------------------------------------------------------
-function SINEW.Format.Render( template, context )
+function GRISTLE.Format.Render( template, context )
 
 	-- a euro savefile turns anything that parses as a number back into one, so a template of "100"
 	-- arrives here as a number rather than a string

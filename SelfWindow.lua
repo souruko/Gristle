@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the player's own bars
+-- Gristle - the player's own bars
 ---------------------------------------------------------------------------------------------------
 -- Entirely event-driven. The engine fires a *Changed event for every vital that moves, so there is
 -- nothing to poll; the only per-frame work in the plugin is the damage flash fade.
@@ -8,7 +8,7 @@
 -- CombatMount rather than on the player, which is a separate entity with its own events.
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Self = {}
+GRISTLE.Self = {}
 
 local MORALE_EVENTS = {
 	"MoraleChanged",
@@ -37,19 +37,19 @@ local INFO_EVENTS = {
 ---------------------------------------------------------------------------------------------------
 
 -- returns true once the vital actually read, which is what tells a pending retry to stop
-function SINEW.Self.RefreshMorale()
+function GRISTLE.Self.RefreshMorale()
 
-	local window = SINEW.Self.window
+	local window = GRISTLE.Self.window
 	if window == nil then return false end
 
-	local morale, maxMorale = SINEW.ReadVital( LOCALPLAYER, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
+	local morale, maxMorale = GRISTLE.ReadVital( LOCALPLAYER, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
 
 	if morale == nil then
 		return false
 	end
 
 	-- nil when there is no bubble at all, which SetVital reads as "no temporary morale"
-	local temp, maxTemp = SINEW.ReadVital( LOCALPLAYER, "GetTemporaryMorale", "GetMaxTemporaryMorale" )
+	local temp, maxTemp = GRISTLE.ReadVital( LOCALPLAYER, "GetTemporaryMorale", "GetMaxTemporaryMorale" )
 
 	window:SetMorale( morale, maxMorale, temp or 0, maxTemp or 0 )
 
@@ -57,12 +57,12 @@ function SINEW.Self.RefreshMorale()
 
 end
 
-function SINEW.Self.RefreshPower()
+function GRISTLE.Self.RefreshPower()
 
-	local window = SINEW.Self.window
+	local window = GRISTLE.Self.window
 	if window == nil then return false end
 
-	local power, maxPower = SINEW.ReadVital( LOCALPLAYER, "GetPower", "GetMaxPower", "GetBaseMaxPower" )
+	local power, maxPower = GRISTLE.ReadVital( LOCALPLAYER, "GetPower", "GetMaxPower", "GetBaseMaxPower" )
 
 	if power == nil then
 		return false
@@ -74,23 +74,23 @@ function SINEW.Self.RefreshPower()
 
 end
 
-function SINEW.Self.RefreshName()
+function GRISTLE.Self.RefreshName()
 
-	local window = SINEW.Self.window
+	local window = GRISTLE.Self.window
 	if window == nil then return end
 
-	window:SetName( SINEW.ReadName( LOCALPLAYER ), SINEW.ReadLevel( LOCALPLAYER ) )
+	window:SetName( GRISTLE.ReadName( LOCALPLAYER ), GRISTLE.ReadLevel( LOCALPLAYER ), GRISTLE.ReadClass( LOCALPLAYER ) )
 
 end
 
 -- true only when every vital read, which is what tells a pending retry it can stop
-function SINEW.Self.Refresh()
+function GRISTLE.Self.Refresh()
 
-	SINEW.Self.RefreshName()
+	GRISTLE.Self.RefreshName()
 
 	-- both are called, not short-circuited: power must still be drawn on a tick where morale failed
-	local morale = SINEW.Self.RefreshMorale()
-	local power  = SINEW.Self.RefreshPower()
+	local morale = GRISTLE.Self.RefreshMorale()
+	local power  = GRISTLE.Self.RefreshPower()
 
 	return morale and power
 
@@ -105,14 +105,14 @@ end
 -- something finally hit you. The power hairline beside it was full the whole time, because that
 -- read happened to succeed.
 ---------------------------------------------------------------------------------------------------
-function SINEW.Self.RefreshPersistently()
+function GRISTLE.Self.RefreshPersistently()
 
-	if SINEW.Self.Refresh() then
-		SINEW.Updater.StopRetry( "self" )
+	if GRISTLE.Self.Refresh() then
+		GRISTLE.Updater.StopRetry( "self" )
 		return true
 	end
 
-	SINEW.Updater.Retry( "self", SINEW.Self.Refresh )
+	GRISTLE.Updater.Retry( "self", GRISTLE.Self.Refresh )
 
 	return false
 
@@ -122,9 +122,9 @@ end
 -- build and subscribe
 ---------------------------------------------------------------------------------------------------
 
-function SINEW.Self.Create()
+function GRISTLE.Self.Create()
 
-	SINEW.Self.window = SINEW.VitalWindow.New( {
+	GRISTLE.Self.window = GRISTLE.VitalWindow.New( {
 		keys = {
 			left        = "selfLeft",
 			top         = "selfTop",
@@ -134,6 +134,7 @@ function SINEW.Self.Create()
 			gap         = "selfGap",
 			showPower   = "selfShowPower",
 			showName    = "selfShowName",
+			showClassIcon = "selfShowClassIcon",
 			visible     = "selfVisible",
 
 			formatBarLeft   = "selfFormatBarLeft",
@@ -149,53 +150,53 @@ function SINEW.Self.Create()
 
 	-- stored on the module so the exact same function object can be handed to RemoveCallback later;
 	-- an anonymous closure here could never be detached
-	SINEW.Self.OnMorale = function( sender, args )
-		SINEW.Self.RefreshMorale()
+	GRISTLE.Self.OnMorale = function( sender, args )
+		GRISTLE.Self.RefreshMorale()
 	end
 
-	SINEW.Self.OnPower = function( sender, args )
-		SINEW.Self.RefreshPower()
+	GRISTLE.Self.OnPower = function( sender, args )
+		GRISTLE.Self.RefreshPower()
 	end
 
-	SINEW.Self.OnInfo = function( sender, args )
-		SINEW.Self.RefreshName()
+	GRISTLE.Self.OnInfo = function( sender, args )
+		GRISTLE.Self.RefreshName()
 	end
 
 	-- appended rather than assigned: LocalPlayer is shared with every other loaded plugin, and a
 	-- direct assignment would silently drop whatever was already listening
-	SINEW.AddCallbacks( LOCALPLAYER, MORALE_EVENTS, SINEW.Self.OnMorale )
-	SINEW.AddCallbacks( LOCALPLAYER, POWER_EVENTS,  SINEW.Self.OnPower )
-	SINEW.AddCallbacks( LOCALPLAYER, INFO_EVENTS,   SINEW.Self.OnInfo )
+	GRISTLE.AddCallbacks( LOCALPLAYER, MORALE_EVENTS, GRISTLE.Self.OnMorale )
+	GRISTLE.AddCallbacks( LOCALPLAYER, POWER_EVENTS,  GRISTLE.Self.OnPower )
+	GRISTLE.AddCallbacks( LOCALPLAYER, INFO_EVENTS,   GRISTLE.Self.OnInfo )
 
 	-- nothing subscribes to InCombatChanged any more. It existed only to swap between an in-combat
 	-- and an out-of-combat opacity, and the opacity is now one fixed value.
 
-	SINEW.Self.window:SetShown( true )
-	SINEW.Self.window:ApplyOpacity()
+	GRISTLE.Self.window:SetShown( true )
+	GRISTLE.Self.window:ApplyOpacity()
 
 	-- the player is the entity the plugin describes, so the window binds to them once and never
 	-- rebinds; only the target window swaps entities
-	SINEW.Self.window:SetEntity( LOCALPLAYER )
+	GRISTLE.Self.window:SetEntity( LOCALPLAYER )
 
-	SINEW.Self.RefreshPersistently()
+	GRISTLE.Self.RefreshPersistently()
 
 end
 
-function SINEW.Self.Dispose()
+function GRISTLE.Self.Dispose()
 
-	if SINEW.Self.window == nil then return end
+	if GRISTLE.Self.window == nil then return end
 
-	SINEW.RemoveCallbacks( LOCALPLAYER, MORALE_EVENTS, SINEW.Self.OnMorale )
-	SINEW.RemoveCallbacks( LOCALPLAYER, POWER_EVENTS,  SINEW.Self.OnPower )
-	SINEW.RemoveCallbacks( LOCALPLAYER, INFO_EVENTS,   SINEW.Self.OnInfo )
+	GRISTLE.RemoveCallbacks( LOCALPLAYER, MORALE_EVENTS, GRISTLE.Self.OnMorale )
+	GRISTLE.RemoveCallbacks( LOCALPLAYER, POWER_EVENTS,  GRISTLE.Self.OnPower )
+	GRISTLE.RemoveCallbacks( LOCALPLAYER, INFO_EVENTS,   GRISTLE.Self.OnInfo )
 
-	SINEW.Updater.StopRetry( "self" )
+	GRISTLE.Updater.StopRetry( "self" )
 
 	-- dropped before the target window is torn down, so a drag handler can never reach a disposed
 	-- mirror through it
-	SINEW.Self.window.mirrorFollower = nil
+	GRISTLE.Self.window.mirrorFollower = nil
 
-	SINEW.Self.window:Dispose()
-	SINEW.Self.window = nil
+	GRISTLE.Self.window:Dispose()
+	GRISTLE.Self.window = nil
 
 end

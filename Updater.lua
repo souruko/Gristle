@@ -1,7 +1,7 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the one and only per-frame updater
+-- Gristle - the one and only per-frame updater
 ---------------------------------------------------------------------------------------------------
--- Everything in Sinew is event-driven except the damage flash, which has to fade. Rather than give
+-- Everything in Gristle is event-driven except the damage flash, which has to fade. Rather than give
 -- each flash segment its own Update, one control drives all of them on a fixed interval and turns
 -- itself off the moment nothing is fading. Idle cost is then genuinely zero.
 --
@@ -9,7 +9,7 @@
 -- as the update host is MouseFinder's driver.
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Updater = {}
+GRISTLE.Updater = {}
 
 local INTERVAL = 0.033   -- ~30 Hz; enough steps for a 0.35 s fade to read as smooth
 
@@ -49,7 +49,7 @@ driver:SetWantsUpdates( false )
 -- a record is { control = <Control>, start = <gameTime>, duration = <seconds> }
 -- the caller owns the control and the record; the updater only drives the opacity
 ---------------------------------------------------------------------------------------------------
-function SINEW.Updater.StartFade( record )
+function GRISTLE.Updater.StartFade( record )
 
 	if record == nil or record.control == nil then
 		return
@@ -58,7 +58,7 @@ function SINEW.Updater.StartFade( record )
 	record.start = Turbine.Engine.GetGameTime()
 
 	record.control:SetVisible( true )
-	SINEW.ForceOpacity( record.control, 1 )
+	GRISTLE.ForceOpacity( record.control, 1 )
 
 	fading[ record ] = true
 
@@ -66,7 +66,7 @@ function SINEW.Updater.StartFade( record )
 
 end
 
-function SINEW.Updater.StopFade( record )
+function GRISTLE.Updater.StopFade( record )
 
 	if record == nil then return end
 
@@ -82,7 +82,7 @@ end
 -- keep calling callback until it returns true, or until the attempts run out
 -- keyed, so re-targeting twice in a second replaces the pending retry instead of stacking them up
 ---------------------------------------------------------------------------------------------------
-function SINEW.Updater.Retry( key, callback )
+function GRISTLE.Updater.Retry( key, callback )
 
 	if key == nil or callback == nil then return end
 
@@ -96,13 +96,13 @@ function SINEW.Updater.Retry( key, callback )
 
 end
 
-function SINEW.Updater.StopRetry( key )
+function GRISTLE.Updater.StopRetry( key )
 	if key ~= nil then
 		retries[ key ] = nil
 	end
 end
 
-function SINEW.Updater.Clear()
+function GRISTLE.Updater.Clear()
 
 	for record in pairs( fading ) do
 		if record.control ~= nil then
@@ -139,12 +139,12 @@ function driver:Update()
 		local elapsed = gameTime - ( record.start or gameTime )
 
 		if duration <= 0 or elapsed >= duration then
-			SINEW.Updater.StopFade( record )
+			GRISTLE.Updater.StopFade( record )
 		else
 			-- linear would look like it stops abruptly; squaring front-loads the fade so the hit
 			-- registers hard and then gets out of the way
 			local remaining = 1 - ( elapsed / duration )
-			SINEW.ForceOpacity( record.control, remaining * remaining )
+			GRISTLE.ForceOpacity( record.control, remaining * remaining )
 		end
 
 	end
@@ -191,9 +191,9 @@ end
 -- teardown; without this the driver survives a /plugins refresh as an orphan still asking for an
 -- Update every frame
 ---------------------------------------------------------------------------------------------------
-function SINEW.Updater.Dispose()
+function GRISTLE.Updater.Dispose()
 
-	SINEW.Updater.Clear()
+	GRISTLE.Updater.Clear()
 
 	driver:SetVisible( false )
 	driver:SetParent( nil )

@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the window that holds a set of bars
+-- Gristle - the window that holds a set of bars
 ---------------------------------------------------------------------------------------------------
 -- The self window and the target window are the same object with different settings keys and
 -- different data sources, so they share this. It owns:
@@ -19,7 +19,7 @@
 -- the bars are the thing you aimed at a spot on screen.
 ---------------------------------------------------------------------------------------------------
 
-SINEW.VitalWindow = {}
+GRISTLE.VitalWindow = {}
 
 ---------------------------------------------------------------------------------------------------
 -- options:
@@ -31,8 +31,9 @@ SINEW.VitalWindow = {}
 --   mirrorKeys  settings keys of the window this one may mirror, or nil if it never mirrors
 --   alignRight  this whole frame reads inward from the right-hand end rather than the left: the
 --               name, the level and both of the morale bar's readouts flip together
+--               - and both bars fill from the right and drain towards it
 ---------------------------------------------------------------------------------------------------
-function SINEW.VitalWindow.New( options )
+function GRISTLE.VitalWindow.New( options )
 
 	local self = {}
 
@@ -62,7 +63,7 @@ function SINEW.VitalWindow.New( options )
 	-- mouse-invisible, so the clicks fall through to it. Same arrangement as
 	-- Potato/ui/potatoTooltip.lua.
 	--
-	-- It is also the one thing in Sinew that is deliberately *not* click-through, which is why it
+	-- It is also the one thing in Gristle that is deliberately *not* click-through, which is why it
 	-- can be switched off: with it on, the frames stop being holes you can click the world through.
 	---------------------------------------------------------------------------------------------------
 
@@ -94,14 +95,15 @@ function SINEW.VitalWindow.New( options )
 	-- left and the pair is a reflection rather than two frames that happen to be near each other.
 	self.alignRight = options.alignRight and true or false
 
-	self.nameRow = SINEW.NameRow.New( self.window, {
+	self.nameRow = GRISTLE.NameRow.New( self.window, {
 		zBase      = 50,
 		alignRight = self.alignRight,
 		formatKeys = { main = self.keys.formatNameMain, aside = self.keys.formatNameAside },
+		iconKey    = self.keys.showClassIcon,
 		context    = self.context,
 	} )
 
-	self.moraleBar = SINEW.Bar.New( self.window, {
+	self.moraleBar = GRISTLE.Bar.New( self.window, {
 		showLabels = options.showLabels,
 		threshold  = options.threshold,
 		allowFlash = options.allowFlash,
@@ -111,15 +113,17 @@ function SINEW.VitalWindow.New( options )
 		formatKeys = { left = self.keys.formatBarLeft, right = self.keys.formatBarRight },
 		context    = self.context,
 		alignRight = self.alignRight,
+		fillFromRight = self.alignRight,
 	} )
 
-	self.powerBar = SINEW.Bar.New( self.window, {
+	self.powerBar = GRISTLE.Bar.New( self.window, {
 		showLabels = false,
 		threshold  = false,
 		allowFlash = false,
 		allowTemp  = false,
 		color      = "colorPower",
 		zBase      = 30,
+		fillFromRight = self.alignRight,
 	} )
 
 	---------------------------------------------------------------------------------------------------
@@ -149,7 +153,7 @@ function SINEW.VitalWindow.New( options )
 		x = x + ( args.X - self.dragStartX )
 		y = y + ( args.Y - self.dragStartY )
 
-		x, y = SINEW.ClampToScreen( x, y, self.window:GetWidth(), self.window:GetHeight() )
+		x, y = GRISTLE.ClampToScreen( x, y, self.window:GetWidth(), self.window:GetHeight() )
 
 		self.window:SetPosition( x, y )
 
@@ -185,24 +189,24 @@ function SINEW.VitalWindow.New( options )
 		-------------------------------------------------------------------------------------------------
 		if self:IsMirrored() then
 
-			local sourceLeft = SINEW.MirrorLeft( left, self.window:GetWidth() )
+			local sourceLeft = GRISTLE.MirrorLeft( left, self.window:GetWidth() )
 
-			SINEW.Settings[ self.mirrorKeys.left ], SINEW.Settings[ self.mirrorKeys.top ] =
-				SINEW.PixelToRatio( sourceLeft, top )
+			GRISTLE.Settings[ self.mirrorKeys.left ], GRISTLE.Settings[ self.mirrorKeys.top ] =
+				GRISTLE.PixelToRatio( sourceLeft, top )
 
-			SINEW.Save()
+			GRISTLE.Save()
 
 			-- the window that moved is already where it belongs; the one it mirrors is not
-			SINEW.ApplyPositions()
+			GRISTLE.ApplyPositions()
 
 			return
 
 		end
 
 		-- stored as a screen ratio, so changing resolution does not strand the window off-screen
-		SINEW.Settings[ self.keys.left ], SINEW.Settings[ self.keys.top ] = SINEW.PixelToRatio( left, top )
+		GRISTLE.Settings[ self.keys.left ], GRISTLE.Settings[ self.keys.top ] = GRISTLE.PixelToRatio( left, top )
 
-		SINEW.Save()
+		GRISTLE.Save()
 
 	end
 
@@ -217,7 +221,7 @@ function SINEW.VitalWindow.New( options )
 		local left, top = self.window:GetPosition()
 		local width, height = self.window:GetSize()
 
-		left, top = SINEW.ClampToScreen( left + dx, top + dy, width, height )
+		left, top = GRISTLE.ClampToScreen( left + dx, top + dy, width, height )
 
 		self.window:SetPosition( left, top )
 
@@ -236,10 +240,10 @@ function SINEW.VitalWindow.New( options )
 
 	function self:ApplyLayout()
 
-		local settings = SINEW.Settings
+		local settings = GRISTLE.Settings
 		local keys = self.keys
 
-		local border = settings.showBorder and SINEW.Border or 0
+		local border = settings.showBorder and GRISTLE.Border or 0
 
 		local width       = math.max( 20, math.floor( settings[ keys.width ] or 260 ) )
 		local barHeight   = math.max( 4,  math.floor( settings[ keys.barHeight ] or 34 ) )
@@ -253,7 +257,7 @@ function SINEW.VitalWindow.New( options )
 		local top = 0
 
 		if showName then
-			local nameHeight = SINEW.NameHeight()
+			local nameHeight = GRISTLE.NameRowHeight( keys.showClassIcon )
 			self.nameRow:Layout( 0, 0, width, nameHeight )
 			top = nameHeight + gap
 		end
@@ -271,7 +275,10 @@ function SINEW.VitalWindow.New( options )
 		local totalHeight = top + barHeight + 2 * border
 
 		if showPower then
-			local powerTop = totalHeight + gap
+			-- at gap 0 the two bars share one border line rather than stacking two: the power bar's
+			-- top edge is laid over the morale bar's bottom edge. Same colour, and neither frame
+			-- reaches the other's track, so whichever paints last makes no difference.
+			local powerTop = ( gap == 0 ) and ( totalHeight - border ) or ( totalHeight + gap )
 			self.powerBar:Layout( 0, powerTop, width, powerHeight )
 			totalHeight = powerTop + powerHeight + 2 * border
 		end
@@ -295,7 +302,7 @@ function SINEW.VitalWindow.New( options )
 
 		-- above everything. The bars give themselves explicit z-orders in Layout, which would
 		-- otherwise bury the handle created before them and leave nothing to grab.
-		SINEW.ForceZOrder( self.moveControl, 1000 )
+		GRISTLE.ForceZOrder( self.moveControl, 1000 )
 
 		-- on every layout, not just on load: making the bar wider can push it off the screen edge,
 		-- and a mirrored window's position depends on its own width
@@ -307,7 +314,7 @@ function SINEW.VitalWindow.New( options )
 	-- is this window currently a mirror of another?
 	---------------------------------------------------------------------------------------------------
 	function self:IsMirrored()
-		return self.mirrorKeys ~= nil and SINEW.Settings.mirrorTarget and true or false
+		return self.mirrorKeys ~= nil and GRISTLE.Settings.mirrorTarget and true or false
 	end
 
 	---------------------------------------------------------------------------------------------------
@@ -317,7 +324,7 @@ function SINEW.VitalWindow.New( options )
 	---------------------------------------------------------------------------------------------------
 	function self:ApplyPosition()
 
-		local settings = SINEW.Settings
+		local settings = GRISTLE.Settings
 		local keys = self.keys
 
 		local width, height = self.window:GetSize()
@@ -325,14 +332,14 @@ function SINEW.VitalWindow.New( options )
 		local left, top
 
 		if self:IsMirrored() then
-			local sourceLeft, sourceTop = SINEW.RatioToPixel(
+			local sourceLeft, sourceTop = GRISTLE.RatioToPixel(
 				settings[ self.mirrorKeys.left ] or 0.4, settings[ self.mirrorKeys.top ] or 0.5 )
-			left, top = SINEW.MirrorLeft( sourceLeft, width ), sourceTop
+			left, top = GRISTLE.MirrorLeft( sourceLeft, width ), sourceTop
 		else
-			left, top = SINEW.RatioToPixel( settings[ keys.left ] or 0.4, settings[ keys.top ] or 0.5 )
+			left, top = GRISTLE.RatioToPixel( settings[ keys.left ] or 0.4, settings[ keys.top ] or 0.5 )
 		end
 
-		left, top = SINEW.ClampToScreen( left, top, width, height )
+		left, top = GRISTLE.ClampToScreen( left, top, width, height )
 
 		self.window:SetPosition( left, top )
 
@@ -346,8 +353,8 @@ function SINEW.VitalWindow.New( options )
 
 		local width, height = self.window:GetSize()
 
-		local left, top = SINEW.ClampToScreen(
-			SINEW.MirrorLeft( sourceLeft, width ), sourceTop, width, height )
+		local left, top = GRISTLE.ClampToScreen(
+			GRISTLE.MirrorLeft( sourceLeft, width ), sourceTop, width, height )
 
 		self.window:SetPosition( left, top )
 
@@ -372,7 +379,7 @@ function SINEW.VitalWindow.New( options )
 	---------------------------------------------------------------------------------------------------
 	function self:ApplyOpacity()
 
-		local opacity = tonumber( SINEW.Settings.opacity ) or 1
+		local opacity = tonumber( GRISTLE.Settings.opacity ) or 1
 
 		-- in move mode the window must stay clearly visible whatever the setting says, or a HUD turned
 		-- down to a faint shadow becomes a thing you cannot find in order to drag it
@@ -380,7 +387,7 @@ function SINEW.VitalWindow.New( options )
 			opacity = 1
 		end
 
-		SINEW.ForceOpacity( self.window, opacity )
+		GRISTLE.ForceOpacity( self.window, opacity )
 
 	end
 
@@ -390,7 +397,7 @@ function SINEW.VitalWindow.New( options )
 		self.moveControl:SetVisible( MOVE )
 
 		if MOVE then
-			self.moveControl:SetBackColor( SINEW.Color( SINEW.Palette.handle ) )
+			self.moveControl:SetBackColor( GRISTLE.Color( GRISTLE.Palette.handle ) )
 			self.moveControl:SetOpacity( 0.35 )
 		end
 
@@ -420,13 +427,13 @@ function SINEW.VitalWindow.New( options )
 
 	function self:ApplyEntity()
 
-		local wanted = SINEW.Settings.entityControl and self.entity ~= nil
+		local wanted = GRISTLE.Settings.entityControl and self.entity ~= nil
 
 		self.entityControl:SetVisible( wanted and true or false )
 		self.entityControl:SetMouseVisible( wanted and true or false )
 
 		-- under every bar, so the bars are what you see and it is only what you click
-		SINEW.ForceZOrder( self.entityControl, 1 )
+		GRISTLE.ForceZOrder( self.entityControl, 1 )
 
 	end
 
@@ -444,10 +451,14 @@ function SINEW.VitalWindow.New( options )
 		self.nameRow:Render()
 	end
 
-	function self:SetName( name, level )
+	-- class is a Turbine.Gameplay.Class value, or nil for anything that is not a player. Only a
+	-- class with an emblem in GRISTLE.ClassIcons gets one; the rest show no icon rather than a wrong one.
+	function self:SetName( name, level, class )
 
 		self.context.name  = name or ""
 		self.context.level = level
+
+		self.nameRow:SetClassIcon( class ~= nil and GRISTLE.ClassIcons[ class ] or nil )
 
 		self:RenderText()
 
@@ -459,15 +470,20 @@ function SINEW.VitalWindow.New( options )
 	-- A chest, a door or a crafting station is a perfectly good thing to have selected and has no
 	-- morale at all. The frame stays up with its name and its empty background, because what you
 	-- want to know is what you have got selected; hiding the whole frame answers that with nothing.
+	--
+	-- Both bars go blank together, so an object shows the same empty two-bar frame a creature
+	-- does rather than a lone morale track. The power track only appears if power is switched on
+	-- at all. Coming back, SetPower runs straight after this and decides from the real reading
+	-- whether the power bar stays - a creature with no power still loses its hairline there.
 	---------------------------------------------------------------------------------------------------
 	function self:SetVitalsShown( shown )
 
 		self.moraleBar:SetBlank( not shown )
+		self.powerBar:SetBlank( not shown )
 
 		if not shown then
-			-- nothing to report means no hairline either, whatever the setting says
-			self.powerShown = false
-			self.powerBar:SetVisible( false )
+			self.powerShown = self.showPower and true or false
+			self.powerBar:SetVisible( self.powerShown )
 		end
 
 	end
@@ -535,7 +551,7 @@ function SINEW.VitalWindow.New( options )
 
 	function self:SetShown( shown )
 
-		local wanted = shown and ( SINEW.Settings[ self.keys.visible ] ~= false )
+		local wanted = shown and ( GRISTLE.Settings[ self.keys.visible ] ~= false )
 
 		self.window:SetVisible( wanted and true or false )
 
@@ -544,7 +560,7 @@ function SINEW.VitalWindow.New( options )
 	-- show the window regardless of whether it has anything to describe, so there is something to
 	-- grab in move mode. Still obeys the "hide this window entirely" setting.
 	function self:ForceShown()
-		self.window:SetVisible( SINEW.Settings[ self.keys.visible ] ~= false )
+		self.window:SetVisible( GRISTLE.Settings[ self.keys.visible ] ~= false )
 	end
 
 	---------------------------------------------------------------------------------------------------

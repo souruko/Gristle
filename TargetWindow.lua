@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the current target's bars
+-- Gristle - the current target's bars
 ---------------------------------------------------------------------------------------------------
 -- Same window as the player's, but the entity it describes changes constantly, so the vital events
 -- have to be detached from the old target and attached to the new one on every TargetChanged.
@@ -13,7 +13,7 @@
 --   both             -> a player
 ---------------------------------------------------------------------------------------------------
 
-SINEW.Target = {}
+GRISTLE.Target = {}
 
 local VITAL_EVENTS = {
 	"MoraleChanged",
@@ -33,30 +33,30 @@ local INFO_EVENTS = {
 	"LevelChanged",
 }
 
-SINEW.Target.entity = nil
+GRISTLE.Target.entity = nil
 
 ---------------------------------------------------------------------------------------------------
 
-function SINEW.Target.RefreshName()
+function GRISTLE.Target.RefreshName()
 
-	local window = SINEW.Target.window
-	local entity = SINEW.Target.entity
+	local window = GRISTLE.Target.window
+	local entity = GRISTLE.Target.entity
 
 	if window == nil or entity == nil then return end
 
-	window:SetName( SINEW.ReadName( entity ), SINEW.ReadLevel( entity ) )
+	window:SetName( GRISTLE.ReadName( entity ), GRISTLE.ReadLevel( entity ), GRISTLE.ReadClass( entity ) )
 
 end
 
 -- returns true once the morale actually read, which is what tells a pending retry to stop
-function SINEW.Target.Refresh()
+function GRISTLE.Target.Refresh()
 
-	local window = SINEW.Target.window
-	local entity = SINEW.Target.entity
+	local window = GRISTLE.Target.window
+	local entity = GRISTLE.Target.entity
 
 	if window == nil or entity == nil then return false end
 
-	local morale, maxMorale = SINEW.ReadVital( entity, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
+	local morale, maxMorale = GRISTLE.ReadVital( entity, "GetMorale", "GetMaxMorale", "GetBaseMaxMorale" )
 
 	if morale == nil then
 		-- Nothing to report: an object, something that has not finished loading, or a target that
@@ -71,13 +71,21 @@ function SINEW.Target.Refresh()
 
 	window:SetVitalsShown( true )
 
-	local temp, maxTemp = SINEW.ReadVital( entity, "GetTemporaryMorale", "GetMaxTemporaryMorale" )
+	-- A player target's class can arrive after the entity does, like its vitals, and unlike its
+	-- name nothing fires when it does. So while a player target is still showing no icon, every
+	-- vital event asks again. Only while it is missing, and only for an entity that has GetClass
+	-- at all: once it is found, or for a monster, this costs one table lookup.
+	if GRISTLE.Target.ClassPending() then
+		GRISTLE.Target.RefreshName()
+	end
+
+	local temp, maxTemp = GRISTLE.ReadVital( entity, "GetTemporaryMorale", "GetMaxTemporaryMorale" )
 
 	window:SetMorale( morale, maxMorale, temp or 0, maxTemp or 0 )
 
 	-- passed through even when it is nil. Plenty of monsters report no power at all, and the window
 	-- has to hide the hairline for them rather than leave the last target's reading on screen.
-	local power, maxPower = SINEW.ReadVital( entity, "GetPower", "GetMaxPower", "GetBaseMaxPower" )
+	local power, maxPower = GRISTLE.ReadVital( entity, "GetPower", "GetMaxPower", "GetBaseMaxPower" )
 
 	window:SetPower( power, maxPower )
 
@@ -94,21 +102,39 @@ end
 -- regularly comes back empty. Without this the bar stays blank until that target's morale happens
 -- to change, which for anything you are not fighting is never.
 ---------------------------------------------------------------------------------------------------
-function SINEW.Target.RefreshPersistently()
+-- true while the target is a player whose class has not come through yet. A monster has no
+-- GetClass and is never pending; a class with no emblem in the table counts as come through, since
+-- asking again will not change the answer.
+function GRISTLE.Target.ClassPending()
 
-	if SINEW.Target.Refresh() then
-		SINEW.Updater.StopRetry( "target" )
+	local window = GRISTLE.Target.window
+	local entity = GRISTLE.Target.entity
+
+	if window == nil or entity == nil or entity.GetClass == nil then
+		return false
+	end
+
+	return GRISTLE.ReadClass( entity ) == nil
+
+end
+
+function GRISTLE.Target.RefreshPersistently()
+
+	-- done only once the vitals have read AND the class has, so a player target standing still at
+	-- full morale - which fires no events at all - still gets its icon when the class arrives
+	if GRISTLE.Target.Refresh() and not GRISTLE.Target.ClassPending() then
+		GRISTLE.Updater.StopRetry( "target" )
 		return true
 	end
 
-	SINEW.Updater.Retry( "target", function()
+	GRISTLE.Updater.Retry( "target", function()
 		-- the retry outlives the target that started it, so it has to stop when the target changes
 		-- rather than resurrect a window describing something you are no longer looking at
-		if SINEW.Target.entity == nil then
+		if GRISTLE.Target.entity == nil then
 			return true
 		end
-		SINEW.Target.RefreshName()
-		return SINEW.Target.Refresh()
+		GRISTLE.Target.RefreshName()
+		return GRISTLE.Target.Refresh() and not GRISTLE.Target.ClassPending()
 	end )
 
 	return false
@@ -119,21 +145,21 @@ end
 -- target swap
 ---------------------------------------------------------------------------------------------------
 
-function SINEW.Target.Attach( entity )
+function GRISTLE.Target.Attach( entity )
 
-	local window = SINEW.Target.window
+	local window = GRISTLE.Target.window
 	if window == nil then return end
 
 	-- detach from whoever we were watching, or the old target keeps driving our handler
-	if SINEW.Target.entity ~= nil then
-		SINEW.RemoveCallbacks( SINEW.Target.entity, VITAL_EVENTS, SINEW.Target.OnVital )
-		SINEW.RemoveCallbacks( SINEW.Target.entity, INFO_EVENTS,  SINEW.Target.OnInfo )
+	if GRISTLE.Target.entity ~= nil then
+		GRISTLE.RemoveCallbacks( GRISTLE.Target.entity, VITAL_EVENTS, GRISTLE.Target.OnVital )
+		GRISTLE.RemoveCallbacks( GRISTLE.Target.entity, INFO_EVENTS,  GRISTLE.Target.OnInfo )
 	end
 
-	SINEW.Target.entity = nil
+	GRISTLE.Target.entity = nil
 
 	-- whatever was pending belonged to the previous target
-	SINEW.Updater.StopRetry( "target" )
+	GRISTLE.Updater.StopRetry( "target" )
 
 	-- clear the caches before anything new arrives, so the first update after a swap cannot be
 	-- mistaken for incoming damage and flash
@@ -146,25 +172,25 @@ function SINEW.Target.Attach( entity )
 		return
 	end
 
-	SINEW.Target.entity = entity
+	GRISTLE.Target.entity = entity
 
 	window:SetEntity( entity )
 
 	-- everything targetable has a name, including the chests and doors that have no vitals, so the
 	-- name is tracked whatever this turns out to be
-	SINEW.AddCallbacks( entity, INFO_EVENTS, SINEW.Target.OnInfo )
+	GRISTLE.AddCallbacks( entity, INFO_EVENTS, GRISTLE.Target.OnInfo )
 
 	-- read here rather than in Refresh: Refresh runs on every morale event, and re-reading a name
 	-- that only changes when the target does would cost two calls a frame for nothing
-	SINEW.Target.RefreshName()
+	GRISTLE.Target.RefreshName()
 
 	-- a test of what the entity is, not of what it currently reports: a mob whose data has not
 	-- arrived yet still has to be subscribed to, or nothing is listening when it does arrive
-	if SINEW.HasVitals( entity ) then
+	if GRISTLE.HasVitals( entity ) then
 
-		SINEW.AddCallbacks( entity, VITAL_EVENTS, SINEW.Target.OnVital )
+		GRISTLE.AddCallbacks( entity, VITAL_EVENTS, GRISTLE.Target.OnVital )
 
-		SINEW.Target.RefreshPersistently()
+		GRISTLE.Target.RefreshPersistently()
 
 	else
 
@@ -181,9 +207,9 @@ end
 -- build and subscribe
 ---------------------------------------------------------------------------------------------------
 
-function SINEW.Target.Create()
+function GRISTLE.Target.Create()
 
-	SINEW.Target.window = SINEW.VitalWindow.New( {
+	GRISTLE.Target.window = GRISTLE.VitalWindow.New( {
 		keys = {
 			left        = "targetLeft",
 			top         = "targetTop",
@@ -193,6 +219,7 @@ function SINEW.Target.Create()
 			gap         = "targetGap",
 			showPower   = "targetShowPower",
 			showName    = "targetShowName",
+			showClassIcon = "targetShowClassIcon",
 			visible     = "targetVisible",
 
 			formatBarLeft   = "targetFormatBarLeft",
@@ -214,45 +241,45 @@ function SINEW.Target.Create()
 		allowTemp  = true,
 	} )
 
-	SINEW.Target.OnVital = function( sender, args )
-		SINEW.Target.Refresh()
+	GRISTLE.Target.OnVital = function( sender, args )
+		GRISTLE.Target.Refresh()
 	end
 
-	SINEW.Target.OnInfo = function( sender, args )
-		SINEW.Target.RefreshName()
+	GRISTLE.Target.OnInfo = function( sender, args )
+		GRISTLE.Target.RefreshName()
 	end
 
-	SINEW.Target.OnTargetChanged = function( sender, args )
-		SINEW.Target.Attach( LOCALPLAYER:GetTarget() )
+	GRISTLE.Target.OnTargetChanged = function( sender, args )
+		GRISTLE.Target.Attach( LOCALPLAYER:GetTarget() )
 	end
 
 	-- appended rather than assigned. Worth knowing: Gibberish3 assigns LocalPlayer.TargetChanged
-	-- directly, which overwrites the slot instead of appending to it. If Sinew loads first its
-	-- handler is dropped; loading Sinew after Gibberish3 appends to the existing chain and both work.
-	SINEW.AddCallback( LOCALPLAYER, "TargetChanged", SINEW.Target.OnTargetChanged )
+	-- directly, which overwrites the slot instead of appending to it. If Gristle loads first its
+	-- handler is dropped; loading Gristle after Gibberish3 appends to the existing chain and both work.
+	GRISTLE.AddCallback( LOCALPLAYER, "TargetChanged", GRISTLE.Target.OnTargetChanged )
 
-	SINEW.Target.window:ApplyOpacity()
+	GRISTLE.Target.window:ApplyOpacity()
 
 	-- pick up whatever is already targeted, so a reload mid-fight does not leave the bar blank
-	SINEW.Target.Attach( LOCALPLAYER:GetTarget() )
+	GRISTLE.Target.Attach( LOCALPLAYER:GetTarget() )
 
 end
 
-function SINEW.Target.Dispose()
+function GRISTLE.Target.Dispose()
 
-	if SINEW.Target.window == nil then return end
+	if GRISTLE.Target.window == nil then return end
 
-	SINEW.Updater.StopRetry( "target" )
+	GRISTLE.Updater.StopRetry( "target" )
 
-	if SINEW.Target.entity ~= nil then
-		SINEW.RemoveCallbacks( SINEW.Target.entity, VITAL_EVENTS, SINEW.Target.OnVital )
-		SINEW.RemoveCallbacks( SINEW.Target.entity, INFO_EVENTS,  SINEW.Target.OnInfo )
-		SINEW.Target.entity = nil
+	if GRISTLE.Target.entity ~= nil then
+		GRISTLE.RemoveCallbacks( GRISTLE.Target.entity, VITAL_EVENTS, GRISTLE.Target.OnVital )
+		GRISTLE.RemoveCallbacks( GRISTLE.Target.entity, INFO_EVENTS,  GRISTLE.Target.OnInfo )
+		GRISTLE.Target.entity = nil
 	end
 
-	SINEW.RemoveCallback( LOCALPLAYER, "TargetChanged", SINEW.Target.OnTargetChanged )
+	GRISTLE.RemoveCallback( LOCALPLAYER, "TargetChanged", GRISTLE.Target.OnTargetChanged )
 
-	SINEW.Target.window:Dispose()
-	SINEW.Target.window = nil
+	GRISTLE.Target.window:Dispose()
+	GRISTLE.Target.window = nil
 
 end

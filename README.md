@@ -1,4 +1,4 @@
-# Sinew
+# Gristle
 
 Replacement morale and power bars for your character and your current target, built for reading at
 a glance mid-fight rather than for looking like the rest of the UI.
@@ -18,7 +18,7 @@ thin hairline underneath it. The idea is that you *read* morale and you *feel* p
 
 ## This needs a companion skin
 
-Sinew only *draws*. Hiding the stock frames is done by a UI skin, and that split is forced rather
+Gristle only *draws*. Hiding the stock frames is done by a UI skin, and that split is forced rather
 than chosen.
 
 The only Lua call that can hide the vitals frames is
@@ -32,12 +32,11 @@ Skins live in `<Documents>/The Lord of the Rings Online/ui/skins/` and are selec
 it in that dropdown is the step that actually does anything — restarting on its own leaves you on
 the default skin, and a skin missing from the list failed to parse without the client saying so.
 
-**Which skin is a moving target, so read that folder rather than this file.** It was `NoVitals`,
-then `EffectsOnly`, and the skin in the tree now is `BlankVitals` — which blanks the *chrome* only
-(plates, borders, portrait covers, level plate, rank insignia) and deliberately leaves the stock
-bars, names and numbers on screen, because no morale-bar fill asset exists to blank. Running Sinew
-against that skin as it stands means the stock readouts are still drawn underneath Sinew's. Each
-skin's own `README.md` carries the measured, element-by-element account.
+**The companion skin is `EffectsOnly`** (`ui/skins/EffectsOnly/`, formerly `BlankVitals`). It
+removes everything on both stock plates — bars, numbers, names, portraits, level, rank icons and the
+animated rank flames on elite targets — and leaves only the buff and debuff trays, which keep their
+tooltips and their separate debuff row. So Gristle's bars are the only ones on screen. The skin's own
+`README.md` carries the full account of how it works.
 
 ## Features
 
@@ -45,7 +44,7 @@ skin's own `README.md` carries the measured, element-by-element account.
 - **Readouts you write yourself** — four per frame, two inside the morale bar and two on the name
   row, each one a line of text with tags in it. `[cur]  [perc]` is the default and gives
   `12,480  74%`; `[cur] / [max]`, `[deficit]`, `[name]`, `Stufe [level]` and `[powperc]` are all
-  equally valid. Eleven tags, listed by `/sinew format`. The two frames have their own four, so your
+  equally valid. Eleven tags, listed by `/gristle format`. The two frames have their own four, so your
   own morale can be a number while the target's is only a percentage. Clearing a box drops that
   readout; numbers can be abbreviated to `12.5k` globally or per tag.
 - **Power hairline** — a thin strip under the morale bar, for your character and your target
@@ -61,12 +60,22 @@ skin's own `README.md` carries the measured, element-by-element account.
   worth seeing even when there is nothing to report about it.
 - **Clickable frames** — the game's own entity element sits under each frame, so clicking targets,
   right-clicking opens the context menu and hovering gives the entity tooltip, exactly as the stock
-  panels do. It is the one part of Sinew that takes the mouse, so it can be switched off to get a
+  panels do. It is the one part of Gristle that takes the mouse, so it can be switched off to get a
   wholly click-through HUD back.
 - **Fine positioning** — a drag lands wherever the mouse was released; the options panel moves
   either frame a pixel at a time for lining up against a quickslot bar or another plugin's window.
 - **Temporary morale** — a bubble takes a proportional slice off the right-hand end and the morale
   fill shrinks into what is left. The bubble's own value is shown next to the morale number.
+- **Depth and marks** — a faint light band along the top of each bar and a shadow along the
+  bottom fake the gradient the game cannot draw, and two thin marks on the morale bar sit at the
+  warn and danger percentages. Both are under Appearance; a sheen of 0 is a flat bar again.
+- **Readable on any colour** — a readout sitting on a bright fill turns dark ("Text on bright
+  fill") and goes back to white once the bar drains out from under it.
+- **Class icons** — the game's class emblem at the outer end of the name row, at its own 20px, for
+  you and for any player target. Monsters and objects show none. A switch per frame.
+- **Colours** — nine preset swatches per colour, or any colour typed as a six-digit code. The
+  morale bar can either switch colour at the warn and danger lines or slide smoothly down to the
+  warn colour, with danger still landing all at once.
 - **Incoming damage flash** — the chunk of morale just lost stays lit for a moment and fades, so
   you can see how hard a hit landed rather than only where you ended up.
 - **The target frame is the player frame's reflection** — its name, its level and both of its
@@ -117,22 +126,22 @@ template and a switched-off readout are the same thing.
 
 | | |
 |---|---|
-| `/sinew` | the command list |
-| `/sinew move` | toggle drag mode for both windows |
-| `/sinew self` | show or hide the player bars |
-| `/sinew target` | show or hide the target bars |
-| `/sinew format` | every tag a readout can contain, and what the four frames are set to now |
-| `/sinew debug` | print what the client reports for your vitals, and what the bar did with it |
-| `/sinew reset` | restore every setting to its default |
+| `/gristle` | the command list |
+| `/gristle move` | toggle drag mode for both windows |
+| `/gristle self` | show or hide the player bars |
+| `/gristle target` | show or hide the target bars |
+| `/gristle format` | every tag a readout can contain, and what the four frames are set to now |
+| `/gristle debug` | print what the client reports for your vitals, and what the bar did with it |
+| `/gristle reset` | restore every setting to its default |
 
-`/sinew format` exists because the options panel has room for the tag names and not for what they
+`/gristle format` exists because the options panel has room for the tag names and not for what they
 mean, and the game has no tooltip to put the rest in. A readout is typed, so looking up what can be
 typed into it has to be possible from inside the game.
 
-`/sinew debug` exists because this game has no log file and runtime errors only ever reach the chat
+`/gristle debug` exists because this game has no log file and runtime errors only ever reach the chat
 window. When a bar is blank there are three possible reasons and they look identical on screen: the
 engine answered nothing, the arithmetic came out at zero width, or the fill was drawn in a colour
-you cannot see against the track. It prints all three — the raw getter answers, what Sinew made of
+you cannot see against the track. It prints all three — the raw getter answers, what Gristle made of
 them, and the bar's actual width, z-order and colours.
 
 Everything else is in the options panel, via the in-game Plugin Manager. Changes apply
@@ -141,16 +150,16 @@ immediately — the bars are the preview.
 ## Known limitations
 
 - **Mounted combat is not covered.** On a war-steed the relevant vitals live on the `CombatMount`
-  entity rather than on the player, which has its own separate events. Sinew keeps showing your
+  entity rather than on the player, which has its own separate events. Gristle keeps showing your
   own morale and power.
 - **The secondary target frame is untouched** by the skin. `ID_UISkin_GamePlay_SelectionTarget`
   has its own vitals field and is left stock.
 - **A target's class and rank are not shown** on the name row, only its level. Level is on `Actor`,
   so everything with a morale bar reports one; class is on `Player` only.
 - **Load order matters next to Gibberish3.** Gibberish3 assigns `LocalPlayer.TargetChanged`
-  directly, which overwrites the event slot rather than appending to it. Sinew appends, so loading
-  Sinew *after* Gibberish3 leaves both working; loading it first means Gibberish3 drops Sinew's
-  target handler. If the target bar stops updating, reload Sinew.
+  directly, which overwrites the event slot rather than appending to it. Gristle appends, so loading
+  Gristle *after* Gibberish3 leaves both working; loading it first means Gibberish3 drops Gristle's
+  target handler. If the target bar stops updating, reload Gristle.
 
 ## Tests
 
@@ -158,9 +167,9 @@ There is an offline harness that runs the real source against a hand-written Tur
 desktop Lua 5.1 — the version the game ships:
 
 ```
-cd Sinew && sh tests/run_all.sh     # both locales
-cd Sinew && lua tests/run.lua       # English client only
-cd Sinew && lua tests/run.lua euro  # German / French client only
+cd Gristle && sh tests/run_all.sh     # both locales
+cd Gristle && lua tests/run.lua       # English client only
+cd Gristle && lua tests/run.lua euro  # German / French client only
 ```
 
 The second pass matters: German and French clients cannot store numbers in a savefile intact, so
@@ -174,7 +183,7 @@ round trip. Nothing imports `tests/` from `Main.lua`, so the folder is inert in 
 
 Template rendering is pure, so most of it is tested without a window in the way; what needs a window
 is the part the design turns on — that a tag works wherever it is typed, because the context lives
-on the window and both widgets read it. The suite also walks the tag list `/sinew format` prints and
+on the window and both widgets read it. The suite also walks the tag list `/gristle format` prints and
 checks every entry resolves, so the documentation cannot drift from the code.
 
 ## File overview
@@ -182,10 +191,10 @@ checks every entry resolves, so the documentation cannot drift from the code.
 | File | Role |
 |---|---|
 | `Main.lua` | entry point, save/load, defaults and clamping, commands, boot, unload |
-| `Constants.lua` | the `SINEW` namespace, fonts, palette, default settings |
+| `Constants.lua` | the `GRISTLE` namespace, fonts, palette, default settings |
 | `Utils.lua` | euro conversion, colours, positions, forced setters, callbacks, vitals reads |
 | `Format.lua` | the readout tags, and the two rules that make a template behave on a HUD |
-| `Bar.lua` | the one bar widget: border, track, clipping window, fill, bubble, flash pool, labels |
+| `Bar.lua` | the one bar widget: border, track, clipping window, fill, bubble, flash pool, sheen, threshold marks, labels and their contrast |
 | `NameRow.lua` | the line above a bar, clipped to the bar's width. Holds no data of its own |
 | `VitalWindow.lua` | a click-through window holding a name row, a morale bar, a power hairline and a drag handle, and the one render context they all read |
 | `SelfWindow.lua` | the player's bars and their event subscriptions |
@@ -195,4 +204,4 @@ checks every entry resolves, so the documentation cannot drift from the code.
 
 ## Version
 
-**1.2.0** — see CHANGELOG.md.
+**1.3.0** — see CHANGELOG.md.

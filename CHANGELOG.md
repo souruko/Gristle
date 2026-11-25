@@ -1,6 +1,53 @@
 # Changelog
 
-All notable changes to Sinew will be documented here.
+All notable changes to Gristle will be documented here.
+
+## [1.3.0] — 2026-11-21
+
+### Added
+
+- **The bars have some depth now.** A faint light band runs along the top of each bar and a faint
+  shadow along the bottom, so they read as solid bars rather than flat paint. The new Sheen setting
+  under Appearance turns it up, down, or off entirely at 0.
+
+- **Marks at your warning and danger points.** Two thin lines on the morale bar show where it will
+  change colour, so you can see how far you are from trouble before you get there. They move with
+  your temporary morale, and can be switched off.
+
+- **Readable numbers on a bright bar.** White text on a yellow or pale bar is hard to read. A number
+  sitting on a bright colour now turns dark and goes back to white once the bar drains out from
+  under it. The dark colour is yours to pick ("Text on bright fill"), and the whole behaviour can be
+  switched off.
+
+- **Smooth colour changes.** Optionally, the morale bar can slide gradually from its normal colour
+  to the warning colour as you lose morale, instead of jumping between them. Danger is never faded
+  into: the moment you cross the danger line the bar turns fully to the danger colour, so it can't
+  creep up on you.
+
+- **Class icons.** Your class emblem now sits beside your name, and when you target another player
+  (or a creep in the Ettenmoors) theirs sits beside theirs. Monsters and NPCs have no class, so
+  their name simply starts at the edge as before. Each frame has its own switch for it. With the
+  icon on, the name line is never shorter than the icon, so at small name sizes the bars sit a
+  couple of pixels lower.
+
+- **Any colour you like.** Every colour row has a box for a six-digit colour code such as #F9C229,
+  next to the preset swatches. It takes effect as soon as the code is complete.
+
+### Changed
+
+- **Sinew is now called Gristle.** The plugin has a new name, so it is loaded with
+  `/plugins load Gristle` and its commands start with `/gristle` (the old `/sinew` command is
+  gone). If you were set to load Sinew automatically, tick Gristle in the plugin manager instead.
+  Your settings come across on their own: the first time Gristle loads on a character, it picks up
+  that character's Sinew settings and carries on from there.
+
+- **The percentage is now bold whenever the number is.** The two readouts inside the bar share one
+  weight, so they read as a pair instead of a headline and a footnote. The game only has bold text
+  at size 16, so bold readouts are always drawn at that size.
+
+- **No more double border at a gap of 0.** With the gap set to 0, the morale and power bars now
+  share a single border line between them instead of drawing two side by side, so the pair reads as
+  one frame.
 
 ## [1.2.0] — 2026-11-17
 
@@ -8,9 +55,9 @@ All notable changes to Sinew will be documented here.
 
 - **The readouts are now yours to write.** Each frame has four of them — two inside the morale bar
   and two on the name row — and each one is a line of text you type, with tags in it for the things
-  Sinew knows. `[cur]  [perc]` gives you `12,480  74%`. `[cur] / [max]` gives you
+  Gristle knows. `[cur]  [perc]` gives you `12,480  74%`. `[cur] / [max]` gives you
   `12,480 / 16,800`. `[name]` inside the bar puts the name on the bar rather than above it. There
-  are eleven tags and `/sinew format` lists them all with what each one does.
+  are eleven tags and `/gristle format` lists them all with what each one does.
 
   This replaces the three switches that were there before — show the absolute number, show the
   percentage, show the level — and it keeps whatever you had them set to, so nothing looks any
@@ -74,7 +121,7 @@ All notable changes to Sinew will be documented here.
 
   One thing to expect the first time you load this: the window grows downwards to make room for the
   row, so your bars will sit a little lower than they did and may want nudging back into place with
-  `/sinew move`.
+  `/gristle move`.
 
 - **Mirrored target frame** — a new option under Window places the target bars as the reflection of
   your own bars across the middle of the screen, the same distance in from the opposite edge and at
@@ -88,7 +135,7 @@ All notable changes to Sinew will be documented here.
 
 - **Clickable frames** — the game's own entity element now sits under both frames, so they behave
   the way the stock vitals panels did: click to target, right-click for the context menu, hover for
-  the tooltip. This is the one part of Sinew that takes the mouse rather than letting clicks through
+  the tooltip. This is the one part of Gristle that takes the mouse rather than letting clicks through
   to the world, so there is a switch for it under Behaviour if you would rather have the bars be
   holes you can click straight through.
 
@@ -110,7 +157,7 @@ All notable changes to Sinew will be documented here.
 
 - **Every readout is outlined in black**, the morale number and percentage included, so the text
   stays legible over a full bright bar, an empty dark track and the scenery alike. The outline was
-  being drawn in a colour the game chose rather than one Sinew asked for.
+  being drawn in a colour the game chose rather than one Gristle asked for.
 
 ### Changed
 
@@ -142,20 +189,20 @@ All notable changes to Sinew will be documented here.
   but both of which are real:
 
   - The game can report a maximum morale of zero while reporting your actual morale quite happily,
-    and there is no way to draw a share of zero. Sinew now falls back to your base maximum.
+    and there is no way to draw a share of zero. Gristle now falls back to your base maximum.
   - The game hands a plugin an entity slightly before that entity's details have arrived, so the
-    first attempt to read can come back with nothing. Sinew treated that as final, and since nothing
+    first attempt to read can come back with nothing. Gristle treated that as final, and since nothing
     redraws a bar until the value next *changes* — which for a character at full morale out of
     combat, or a target you are not fighting, may be never — the bar could stay blank. It now waits
     for the reading and fills itself in when it arrives.
 
-- **Added `/sinew debug`.** If a bar is ever blank again, this prints what the client actually
-  reports for your vitals and what Sinew drew from it, which is the difference between a fix and a
+- **Added `/gristle debug`.** If a bar is ever blank again, this prints what the client actually
+  reports for your vitals and what Gristle drew from it, which is the difference between a fix and a
   guess.
 
 - **The first time you targeted something, its bar was often blank.** The same cause, and worse on a
   target: a monster you are not fighting may never change its morale at all, so the bar stayed empty
-  for as long as you kept that target. Sinew had also been deciding whether something *had* morale by
+  for as long as you kept that target. Gristle had also been deciding whether something *had* morale by
   asking it there and then, which meant a target whose details had not loaded was written off
   entirely and never watched again. It now decides from what the target is rather than from what it
   answers in that first instant — the approach VitalTarget used — and waits for the numbers.
@@ -170,7 +217,7 @@ All notable changes to Sinew will be documented here.
 
 Initial release.
 
-Sinew replaces the morale and power bars for your character and your current target with bars
+Gristle replaces the morale and power bars for your character and your current target with bars
 built for reading at a glance mid-fight. It is the successor to VitalTarget, which only covered
 the target.
 
@@ -178,7 +225,7 @@ The layout puts everything into one dominant morale bar — the absolute number 
 percentage on the right — and demotes power to a thin hairline underneath it. The intent is that
 you read morale and merely feel power draining.
 
-Sinew needs the **NoVitals** skin that ships alongside it. The skin is what actually hides the
+Gristle needs the **NoVitals** skin that ships alongside it. The skin is what actually hides the
 stock frames, and it exists because the one plugin command that can hide them takes your buff and
 debuff icons down at the same time. A skin can erase the bars and leave every effect icon exactly
 where it was.
@@ -208,11 +255,11 @@ where it was.
 - **Options panel** covering both windows' sizes, the readouts, the border, the flash, the warning
   and danger thresholds, both opacities, and every colour. Everything applies the moment you
   change it — the bars are the preview.
-- **Drag mode** via `/sinew move` or the options panel. The target bars stay visible while drag
+- **Drag mode** via `/gristle move` or the options panel. The target bars stay visible while drag
   mode is on even with nothing targeted, so there is always something to grab.
 - **Per-character settings** with a shared copy that can be saved once and loaded onto every other
   character.
-- `/sinew`, `/sinew move`, `/sinew self`, `/sinew target` and `/sinew reset`.
+- `/gristle`, `/gristle move`, `/gristle self`, `/gristle target` and `/gristle reset`.
 - Window positions are stored as a fraction of the screen rather than in pixels, so changing
   resolution moves the bars with it instead of stranding them off the edge.
 - Non-English clients are handled: German and French clients cannot store numbers in a savefile
@@ -221,8 +268,8 @@ where it was.
 ### Notes
 
 - Mounted combat is not covered. On a war-steed the morale and power that matter belong to the
-  steed rather than to you, and Sinew keeps showing yours.
+  steed rather than to you, and Gristle keeps showing yours.
 - The small secondary-target frame is left alone by the skin.
-- If you also run Gibberish3, load Sinew after it. Gibberish3 claims the target-changed event
-  outright instead of sharing it, so loading Sinew first means the target bar stops updating.
-  Reloading Sinew fixes it.
+- If you also run Gibberish3, load Gristle after it. Gibberish3 claims the target-changed event
+  outright instead of sharing it, so loading Gristle first means the target bar stops updating.
+  Reloading Gristle fixes it.

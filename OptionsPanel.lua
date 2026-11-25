@@ -1,5 +1,5 @@
 ---------------------------------------------------------------------------------------------------
--- Sinew - the options panel
+-- Gristle - the options panel
 ---------------------------------------------------------------------------------------------------
 -- A ListBox of rows, each row a plain Control with hand-placed widgets, the same shape as
 -- VitalTarget's panel. Numbers use a stepper rather than a text box plus Apply button: a stepper
@@ -93,7 +93,7 @@ end
 -- decimals is the number of places to show; it also sets how the value is rounded, so a 0.05 step
 -- cannot drift into 0.15000000000000002
 --
--- Normally it reads and writes SINEW.Settings[ key ] directly. Two hooks override that, for values
+-- Normally it reads and writes GRISTLE.Settings[ key ] directly. Two hooks override that, for values
 -- that are not simply a number in the settings:
 --
 --   get     read the displayed value from somewhere else   ( window positions are stored as screen
@@ -134,7 +134,7 @@ local function Stepper( parent, label, left, top, options )
 		if options.get ~= nil then
 			current = tonumber( options.get() ) or 0
 		else
-			current = tonumber( SINEW.Settings[ options.key ] ) or 0
+			current = tonumber( GRISTLE.Settings[ options.key ] ) or 0
 		end
 
 		if decimals > 0 then
@@ -154,18 +154,18 @@ local function Stepper( parent, label, left, top, options )
 
 		else
 
-			SINEW.Settings[ options.key ] = SINEW.StepValue(
-				SINEW.Settings[ options.key ], direction, options.step,
+			GRISTLE.Settings[ options.key ] = GRISTLE.StepValue(
+				GRISTLE.Settings[ options.key ], direction, options.step,
 				options.min, options.max, decimals )
 
-			SINEW.Save()
+			GRISTLE.Save()
 
 		end
 
 		if options.onChange ~= nil then
 			options.onChange()
 		else
-			SINEW.ApplyAll()
+			GRISTLE.ApplyAll()
 		end
 
 		-- rendered last, so a value the change was clamped or mirrored into shows what actually
@@ -195,18 +195,18 @@ local function CheckBox( parent, label, left, top, key, onChange )
 	box:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
 	box:SetFont( FONT_BODY )
 	box:SetText( " " .. label )
-	box:SetChecked( SINEW.Settings[ key ] and true or false )
+	box:SetChecked( GRISTLE.Settings[ key ] and true or false )
 
 	box.CheckedChanged = function()
 
-		SINEW.Settings[ key ] = box:IsChecked()
+		GRISTLE.Settings[ key ] = box:IsChecked()
 
-		SINEW.Save()
+		GRISTLE.Save()
 
 		if onChange ~= nil then
 			onChange()
 		else
-			SINEW.ApplyAll()
+			GRISTLE.ApplyAll()
 		end
 
 	end
@@ -254,12 +254,12 @@ local function FormatRow( parent, label, top, leftKey, rightKey )
 		box:SetBackColor( FIELD )
 		box:SetForeColor( Turbine.UI.Color( 1, 1, 1 ) )
 		box:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
-		box:SetText( tostring( SINEW.Settings[ key ] or "" ) )
+		box:SetText( tostring( GRISTLE.Settings[ key ] or "" ) )
 
 		box.TextChanged = function()
-			SINEW.Settings[ key ] = box:GetText()
-			SINEW.Save()
-			SINEW.ApplyFormats()
+			GRISTLE.Settings[ key ] = box:GetText()
+			GRISTLE.Save()
+			GRISTLE.ApplyFormats()
 		end
 
 		return box
@@ -272,7 +272,12 @@ local function FormatRow( parent, label, top, leftKey, rightKey )
 end
 
 ---------------------------------------------------------------------------------------------------
--- a colour row: current value, then the preset swatches
+-- a colour row: current value, the preset swatches, then a box for any colour as a hex code
+---------------------------------------------------------------------------------------------------
+-- The hex box commits on every keystroke like the template boxes, but only once what is typed is a
+-- whole six-digit code: halfway through typing "F9C229" the box holds "F9C", and reading that as a
+-- colour would flicker the bar through dark nonsense on the way to the one you meant. A swatch
+-- click rewrites the box, so the two can never disagree about what is set.
 ---------------------------------------------------------------------------------------------------
 local function ColorRow( parent, label, top, key )
 
@@ -282,7 +287,45 @@ local function ColorRow( parent, label, top, key )
 	preview:SetParent( parent )
 	preview:SetPosition( MARGIN + 150, top )
 	preview:SetSize( 34, 20 )
-	preview:SetBackColor( SINEW.Color( SINEW.Settings[ key ] ) )
+	preview:SetBackColor( GRISTLE.Color( GRISTLE.Settings[ key ] ) )
+
+	local hexBack = Turbine.UI.Control()
+	hexBack:SetParent( parent )
+	hexBack:SetPosition( MARGIN + 470, top )
+	hexBack:SetSize( 76, 20 )
+	hexBack:SetBackColor( FIELD )
+
+	local hex = Turbine.UI.TextBox()
+	hex:SetParent( hexBack )
+	hex:SetPosition( 3, 2 )
+	hex:SetSize( 70, 16 )
+	hex:SetMultiline( false )
+	hex:SetFont( FONT_SMALL )
+	hex:SetBackColor( FIELD )
+	hex:SetForeColor( Turbine.UI.Color( 1, 1, 1 ) )
+	hex:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleLeft )
+	hex:SetText( "#" .. GRISTLE.ColorToHex( GRISTLE.Settings[ key ] ) )
+
+	-- the client does not fire TextChanged for a programmatic SetText, but nothing promises that,
+	-- and a swatch click rewriting the box must not commit the same colour a second time
+	local updating = false
+
+	hex.TextChanged = function()
+
+		if updating then return end
+
+		local value = GRISTLE.HexToColor( hex:GetText() )
+
+		if value == nil then return end
+
+		GRISTLE.Settings[ key ] = value
+
+		preview:SetBackColor( GRISTLE.Color( value ) )
+
+		GRISTLE.Save()
+		GRISTLE.ApplyAll()
+
+	end
 
 	for i = 1, #SWATCHES do
 
@@ -290,7 +333,7 @@ local function ColorRow( parent, label, top, key )
 		swatch:SetParent( parent )
 		swatch:SetPosition( MARGIN + 196 + ( i - 1 ) * 30, top )
 		swatch:SetSize( 26, 20 )
-		swatch:SetBackColor( SINEW.Color( SWATCHES[i] ) )
+		swatch:SetBackColor( GRISTLE.Color( SWATCHES[i] ) )
 		swatch:SetMouseVisible( true )
 
 		swatch.MouseDown = function( sender, args )
@@ -298,12 +341,16 @@ local function ColorRow( parent, label, top, key )
 			if args.Button ~= Turbine.UI.MouseButton.Left then return end
 
 			-- copied, so the settings never alias the shared SWATCHES table
-			SINEW.Settings[ key ] = SINEW.DeepCopy( SWATCHES[i] )
+			GRISTLE.Settings[ key ] = GRISTLE.DeepCopy( SWATCHES[i] )
 
-			preview:SetBackColor( SINEW.Color( SINEW.Settings[ key ] ) )
+			preview:SetBackColor( GRISTLE.Color( GRISTLE.Settings[ key ] ) )
 
-			SINEW.Save()
-			SINEW.ApplyAll()
+			updating = true
+			hex:SetText( "#" .. GRISTLE.ColorToHex( GRISTLE.Settings[ key ] ) )
+			updating = false
+
+			GRISTLE.Save()
+			GRISTLE.ApplyAll()
 
 		end
 
@@ -315,7 +362,7 @@ end
 -- the panel
 ---------------------------------------------------------------------------------------------------
 
-function SINEW.CreateOptionsPanel()
+function GRISTLE.CreateOptionsPanel()
 
 	local panel = Turbine.UI.Control()
 	panel:SetSize( PANEL_WIDTH, PANEL_HEIGHT )
@@ -367,7 +414,7 @@ function SINEW.CreateOptionsPanel()
 		title:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
 		title:SetFont( FONT_TITLE )
 		title:SetForeColor( GOLD )
-		title:SetText( "Sinew" )
+		title:SetText( "Gristle" )
 
 		local version = Turbine.UI.Label()
 		version:SetParent( row )
@@ -377,7 +424,7 @@ function SINEW.CreateOptionsPanel()
 		version:SetFont( FONT_SMALL )
 		-- deliberately names no skin: the companion skin has been renamed twice already, and a stale
 		-- name here is worse than no name
-		version:SetText( "v" .. SINEW.Version .. "  -  /sinew for the command list" )
+		version:SetText( "v" .. GRISTLE.Version .. "  -  /gristle for the command list" )
 
 		list:AddItem( row )
 	end
@@ -402,21 +449,21 @@ function SINEW.CreateOptionsPanel()
 		moveBox:SetChecked( MOVE )
 
 		moveBox.CheckedChanged = function()
-			SINEW.SetMoveMode( moveBox:IsChecked() )
+			GRISTLE.SetMoveMode( moveBox:IsChecked() )
 		end
 
 		CheckBox( row, "Show the player bars",  MARGIN, 48, "selfVisible", function()
-			SINEW.Self.window:SetShown( true )
+			GRISTLE.Self.window:SetShown( true )
 		end )
 
 		CheckBox( row, "Show the target bars",  MARGIN, 72, "targetVisible", function()
-			SINEW.Target.window:SetShown( SINEW.Target.entity ~= nil )
+			GRISTLE.Target.window:SetShown( GRISTLE.Target.entity ~= nil )
 		end )
 
 		-- a move, not a rebuild: ApplyAll would clear every bar's cache and blank them until the next
 		-- vital event, which on a quiet target could be a while
 		CheckBox( row, "Mirror the target bars across the screen", MARGIN, 96, "mirrorTarget", function()
-			SINEW.ApplyPositions()
+			GRISTLE.ApplyPositions()
 		end )
 
 		TextLabel( row, "its own saved position is then ignored - drag either frame and both move",
@@ -467,8 +514,8 @@ function SINEW.CreateOptionsPanel()
 
 		end
 
-		local function selfWindow()   return SINEW.Self.window end
-		local function targetWindow() return SINEW.Target.window end
+		local function selfWindow()   return GRISTLE.Self.window end
+		local function targetWindow() return GRISTLE.Target.window end
 
 		TextLabel( row, "Player frame", MARGIN, 24, 150, FONT_BODY )
 		Axis( selfWindow, "    across",  48, "x" )
@@ -490,7 +537,7 @@ function SINEW.CreateOptionsPanel()
 	-- player bar
 	-----------------------------------------------------------------------------------------------
 	do
-		local row = Row( 172 )
+		local row = Row( 196 )
 
 		SectionLabel( row, "PLAYER BAR" )
 
@@ -501,6 +548,7 @@ function SINEW.CreateOptionsPanel()
 
 		CheckBox( row, "Show the power hairline", MARGIN, 122, "selfShowPower" )
 		CheckBox( row, "Show your name above it", MARGIN, 146, "selfShowName" )
+		CheckBox( row, "Show your class icon beside the name", MARGIN, 170, "selfShowClassIcon" )
 
 		TextLabel( row, "the gap spaces the name, the bar and the hairline alike", HINT_LEFT, 98, HINT_WIDTH )
 
@@ -513,7 +561,7 @@ function SINEW.CreateOptionsPanel()
 	-- target bar
 	-----------------------------------------------------------------------------------------------
 	do
-		local row = Row( 172 )
+		local row = Row( 196 )
 
 		SectionLabel( row, "TARGET BAR" )
 
@@ -524,6 +572,7 @@ function SINEW.CreateOptionsPanel()
 
 		CheckBox( row, "Show the power hairline",         MARGIN, 122, "targetShowPower" )
 		CheckBox( row, "Show the target's name above it", MARGIN, 146, "targetShowName" )
+		CheckBox( row, "Show a player target's class icon",   MARGIN, 170, "targetShowClassIcon" )
 
 		-- hints go beside a stepper, never beside a checkbox: a checkbox is 420 wide whatever its
 		-- text, so a label parked to its right lands on top of its hit region and eats the click
@@ -539,7 +588,7 @@ function SINEW.CreateOptionsPanel()
 	-----------------------------------------------------------------------------------------------
 	-- Four templates per frame rather than a checkbox per question. The tag names fit here; what
 	-- each one means does not, and there is no tooltip to put it in, so this points at
-	-- /sinew format for the rest.
+	-- /gristle format for the rest.
 	-----------------------------------------------------------------------------------------------
 	do
 		local row = Row( 344 )
@@ -560,17 +609,17 @@ function SINEW.CreateOptionsPanel()
 
 		TextLabel( row, "the first box reads inward from the frame's own end - left on the player",
 			MARGIN, 180, ROW_WIDTH - 2 * MARGIN )
-		TextLabel( row, "clear a box to drop that readout.  /sinew format explains every tag",
+		TextLabel( row, "clear a box to drop that readout.  /gristle format explains every tag",
 			MARGIN, 198, ROW_WIDTH - 2 * MARGIN )
 
 		-- only the rendered strings change, so this does not go through ApplyAll and rebuild both
 		-- windows to re-print four labels
 		CheckBox( row, "Abbreviate large numbers - 12.5k rather than 12,480", MARGIN, 222,
 			"abbreviateNumbers", function()
-				SINEW.ApplyFormats()
+				GRISTLE.ApplyFormats()
 			end )
 
-		CheckBox( row, "Bold the first box", MARGIN, 246, "boldValue" )
+		CheckBox( row, "Bold the bar readouts - bold comes in size 16 only", MARGIN, 246, "boldValue" )
 
 		Stepper( row, "First box size",  MARGIN, 272, { key = "fontSize",        min = 8, max = 23, step = 2 } )
 		Stepper( row, "Second box size", MARGIN, 296, { key = "percentFontSize", min = 8, max = 23, step = 2 } )
@@ -600,8 +649,8 @@ function SINEW.CreateOptionsPanel()
 		-- what you get rather than naming the control
 		CheckBox( row, "Clickable frames - target, right-click menu, tooltip", MARGIN, 72,
 			"entityControl", function()
-				if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyEntity()   end
-				if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyEntity() end
+				if GRISTLE.Self.window   ~= nil then GRISTLE.Self.window:ApplyEntity()   end
+				if GRISTLE.Target.window ~= nil then GRISTLE.Target.window:ApplyEntity() end
 			end )
 
 		Stepper( row, "Flash length",   MARGIN, 96,  { key = "flashDuration", min = 0.05, max = 2.0, step = 0.05, decimals = 2 } )
@@ -612,8 +661,8 @@ function SINEW.CreateOptionsPanel()
 		-- this does not go through ApplyAll and rebuild both windows to change one number.
 		Stepper( row, "Opacity",        MARGIN, 168, { key = "opacity",       min = 0.05, max = 1.0, step = 0.05, decimals = 2,
 			onChange = function()
-				if SINEW.Self.window   ~= nil then SINEW.Self.window:ApplyOpacity()   end
-				if SINEW.Target.window ~= nil then SINEW.Target.window:ApplyOpacity() end
+				if GRISTLE.Self.window   ~= nil then GRISTLE.Self.window:ApplyOpacity()   end
+				if GRISTLE.Target.window ~= nil then GRISTLE.Target.window:ApplyOpacity() end
 			end } )
 
 		TextLabel( row, "off makes the bars click-through again", HINT_LEFT, 96,  HINT_WIDTH )
@@ -626,10 +675,34 @@ function SINEW.CreateOptionsPanel()
 	Divider()
 
 	-----------------------------------------------------------------------------------------------
+	-- appearance
+	-----------------------------------------------------------------------------------------------
+	-- The finish on the bars rather than what they say. All of it is drawn over the fill inside the
+	-- bar's clipping window, so none of it can spill past the end of the track.
+	-----------------------------------------------------------------------------------------------
+	do
+		local row = Row( 124 )
+
+		SectionLabel( row, "APPEARANCE" )
+
+		Stepper( row, "Sheen", MARGIN, 24, { key = "sheen", min = 0, max = 0.5, step = 0.05, decimals = 2 } )
+
+		CheckBox( row, "Mark the warn and danger thresholds",     MARGIN, 50,  "showTicks" )
+		CheckBox( row, "Dark text over a bright fill",            MARGIN, 74,  "textContrast" )
+		CheckBox( row, "Blend colours smoothly as morale drops",  MARGIN, 98,  "colorBlend" )
+
+		TextLabel( row, "a light top and a dark bottom.  0 is flat", HINT_LEFT, 24, HINT_WIDTH )
+
+		list:AddItem( row )
+	end
+
+	Divider()
+
+	-----------------------------------------------------------------------------------------------
 	-- colours
 	-----------------------------------------------------------------------------------------------
 	do
-		local row = Row( 244 )
+		local row = Row( 268 )
 
 		SectionLabel( row, "COLOURS" )
 
@@ -641,7 +714,8 @@ function SINEW.CreateOptionsPanel()
 		ColorRow( row, "Damage flash",      146, "colorFlash" )
 		ColorRow( row, "Empty / deficit",   170, "colorTrack" )
 		ColorRow( row, "Text",              194, "colorText" )
-		ColorRow( row, "Name row",          218, "colorName" )
+		ColorRow( row, "Text on bright fill", 218, "colorTextDark" )
+		ColorRow( row, "Name row",          242, "colorName" )
 
 		list:AddItem( row )
 	end
@@ -659,7 +733,7 @@ function SINEW.CreateOptionsPanel()
 		local status = TextLabel( row, "", MARGIN, 58, 520 )
 
 		local function refreshStatus()
-			if SINEW.HasGlobalSettings() then
+			if GRISTLE.HasGlobalSettings() then
 				status:SetText( "A shared copy exists. Loading it replaces this character's settings." )
 			else
 				status:SetText( "No shared copy yet. Until there is one, every save also writes it." )
@@ -673,9 +747,9 @@ function SINEW.CreateOptionsPanel()
 		saveButton:SetText( "Save as shared" )
 
 		saveButton.Click = function()
-			SINEW.SaveGlobalSettings()
+			GRISTLE.SaveGlobalSettings()
 			refreshStatus()
-			Turbine.Shell.WriteLine( "Sinew: settings saved as the shared copy." )
+			Turbine.Shell.WriteLine( "Gristle: settings saved as the shared copy." )
 		end
 
 		local loadButton = Turbine.UI.Lotro.Button()
@@ -685,10 +759,10 @@ function SINEW.CreateOptionsPanel()
 		loadButton:SetText( "Load shared" )
 
 		loadButton.Click = function()
-			if SINEW.LoadGlobalSettings() then
-				Turbine.Shell.WriteLine( "Sinew: shared settings loaded. Reopen this panel to refresh it." )
+			if GRISTLE.LoadGlobalSettings() then
+				Turbine.Shell.WriteLine( "Gristle: shared settings loaded. Reopen this panel to refresh it." )
 			else
-				Turbine.Shell.WriteLine( "Sinew: there is no shared copy to load." )
+				Turbine.Shell.WriteLine( "Gristle: there is no shared copy to load." )
 			end
 		end
 
@@ -712,8 +786,8 @@ function SINEW.CreateOptionsPanel()
 		reset:SetText( "Reset to defaults" )
 
 		reset.Click = function()
-			SINEW.ResetSettings()
-			Turbine.Shell.WriteLine( "Sinew: settings reset. Reopen this panel to refresh it." )
+			GRISTLE.ResetSettings()
+			Turbine.Shell.WriteLine( "Gristle: settings reset. Reopen this panel to refresh it." )
 		end
 
 		TextLabel( row, "the panel's own widgets refresh when it is reopened", MARGIN + 196, 16, ROW_WIDTH - MARGIN - 196 )

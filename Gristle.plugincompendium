@@ -5,13 +5,13 @@
 -->
 <PluginConfig xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Id>0</Id>
-  <Name>Sinew</Name>
-  <Version>1.2.0</Version>
+  <Name>Gristle</Name>
+  <Version>1.3.0</Version>
   <Author>Souru</Author>
   <InfoUrl></InfoUrl>
   <DownloadUrl></DownloadUrl>
   <Descriptors>
-    <descriptor>Sinew.plugin</descriptor>
+    <descriptor>Gristle.plugin</descriptor>
   </Descriptors>
   <Dependencies />
 </PluginConfig>
