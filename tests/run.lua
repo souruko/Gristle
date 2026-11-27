@@ -2245,14 +2245,14 @@ do
 	GRISTLE.ApplyAll()
 	player:SetMorale( 1000 )
 	check( "dark text on a bright fill",        b.valueLabel:GetForeColor().R, dark.R )
-	checkNear( "its outline is the fill colour", b.valueLabel:GetOutlineColor().R, 0.98 )
+	checkNear( "its outline is the text's inverse", b.valueLabel:GetOutlineColor().R, 1 - dark.R )
 	check( "and the text is still there",       b.valueLabel:GetText(), "1,000" )
 	check( "the right-hand readout too, at full", b.pctLabel:GetForeColor().R, dark.R )
 
 	-- the fill drops away from under the right-hand readout but not the left
 	player:SetMorale( 800 )
 	check( "the readout over the track goes back to white", b.pctLabel:GetForeColor().R, s.colorText.R )
-	check( "with a black outline again",                    b.pctLabel:GetOutlineColor().R, 0 )
+	checkNear( "with the white text's inverse outline again", b.pctLabel:GetOutlineColor().R, 1 - s.colorText.R )
 	check( "the readout still over the fill stays dark",    b.valueLabel:GetForeColor().R, dark.R )
 
 	local recoloured = stub.Counted( b.valueLabel, "SetText" )
@@ -2326,13 +2326,44 @@ do
 	s.boldValue = true
 	s.fontSize, s.percentFontSize = 16, 14
 	GRISTLE.ApplyAll()
-	check( "with bold on, the number is bold",          b.valueLabel:GetFont(), "font:VerdanaBold16" )
-	check( "and so is the percentage beside it",        b.pctLabel:GetFont(),   "font:VerdanaBold16" )
+	-- VerdanaBold16 draws no outline in game, so Verdana has no bold face and bold is ignored
+	check( "Verdana ignores bold, the number stays outlinable", b.valueLabel:GetFont(), "font:Verdana16" )
+	check( "and so does the percentage beside it",              b.pctLabel:GetFont(),   "font:Verdana14" )
 
 	s.boldValue = false
 	GRISTLE.ApplyAll()
 	check( "with bold off, the number keeps its size",  b.valueLabel:GetFont(), "font:Verdana16" )
 	check( "and the percentage keeps its own",          b.pctLabel:GetFont(),   "font:Verdana14" )
+
+	-- the font family -----------------------------------------------------------------------------
+
+	s.fontFamily = "BookAntiqua"
+	GRISTLE.ApplyAll()
+	check( "a family switch reaches the readout",       b.valueLabel:GetFont(), "font:BookAntiqua16" )
+	check( "and the name row",                          GRISTLE.Self.window.nameRow.nameLabel:GetFont(), "font:BookAntiqua14" )
+
+	s.boldValue = true
+	GRISTLE.ApplyAll()
+	check( "bold takes that family's nearest bold size", b.valueLabel:GetFont(), "font:BookAntiquaBold14" )
+
+	s.fontFamily = "Arial"
+	GRISTLE.ApplyAll()
+	check( "a family with no bold ignores bold",        b.valueLabel:GetFont(), "font:Arial12" )
+
+	s.fontFamily = "TrajanPro"
+	s.boldValue = false
+	s.fontSize = 17
+	GRISTLE.ApplyAll()
+	check( "a size the family lacks takes its nearest", b.valueLabel:GetFont(), "font:TrajanPro16" )
+
+	s.fontFamily = "NoSuchFont"
+	GRISTLE.ApplyAll()
+	check( "an unknown family falls back to Verdana",   b.valueLabel:GetFont(), "font:Verdana16" )
+
+	s.fontFamily = "Verdana"
+	s.fontSize = 16
+	s.boldValue = false
+	GRISTLE.ApplyAll()
 
 	s.boldValue = true
 	GRISTLE.ApplyAll()

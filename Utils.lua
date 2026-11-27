@@ -129,6 +129,12 @@ function GRISTLE.Color( value )
 
 end
 
+-- the photographic negative of a colour, for outlining text in its own opposite
+function GRISTLE.InvertColor( value )
+	value = GRISTLE.Color( value )
+	return Turbine.UI.Color( 1 - ( value.R or 0 ), 1 - ( value.G or 0 ), 1 - ( value.B or 0 ) )
+end
+
 function GRISTLE.ColorTable( r, g, b )
 	return { R = r, G = g, B = b }
 end
@@ -324,9 +330,12 @@ function GRISTLE.Label( parent, alignment )
 	local label = Turbine.UI.Label()
 	label:SetParent( parent )
 	label:SetMouseVisible( false )
-	label:SetMultiline( false )
 	label:SetTextAlignment( alignment )
 
+	-- No SetMultiline( false ) here. A single-line label appears not to draw FontStyle.Outline in the live
+	-- client; left at the default, as Gibberish3's timer labels are, the outline is drawn. The clip
+	-- window each label sits in already stops an overlong readout spilling out of its bar.
+	--
 	-- Every label Gristle draws sits over a bar or over the world, so it needs to be legible against
 	-- whatever ends up behind it. The outline *style* alone is not enough: the engine picks its own
 	-- outline colour, and a pale outline on pale text over a pale bar is no outline at all. Black is

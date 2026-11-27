@@ -224,9 +224,9 @@ function GRISTLE.Bar.New( root, options )
 
 		if self.valueLabel ~= nil then
 			self.valueLabel:SetForeColor( GRISTLE.Color( settings.colorText ) )
-			self.valueLabel:SetOutlineColor( Turbine.UI.Color.Black )
+			self.valueLabel:SetOutlineColor( GRISTLE.InvertColor( settings.colorText ) )
 			self.pctLabel:SetForeColor( GRISTLE.Color( settings.colorText ) )
-			self.pctLabel:SetOutlineColor( Turbine.UI.Color.Black )
+			self.pctLabel:SetOutlineColor( GRISTLE.InvertColor( settings.colorText ) )
 		end
 
 		-- what the labels were just set to, so the contrast check knows what is on screen
@@ -792,9 +792,8 @@ function GRISTLE.Bar.New( root, options )
 	-- readout contrast
 	---------------------------------------------------------------------------------------------------
 	-- Each label is judged by what is under the end it reads from: that is where its text starts, and
-	-- the one part of it guaranteed to be drawn. Over a bright surface it goes dark, with its outline
-	-- in the surface's own colour so the outline disappears rather than ringing the dark glyphs in
-	-- black. A label that straddles the edge of the fill is judged by its anchor and accepts the rest.
+	-- the one part of it guaranteed to be drawn. Over a bright surface it goes dark. Either way its
+	-- outline is the inverse of whatever colour the text is. A label that straddles the edge of the fill is judged by its anchor and accepts the rest.
 	---------------------------------------------------------------------------------------------------
 
 	-- what colour is drawn at x pixels in from the left of the track
@@ -822,7 +821,7 @@ function GRISTLE.Bar.New( root, options )
 
 	end
 
-	-- "light", or "dark:" plus the surface it sits on, which is also what the outline is set to
+	-- "light", or "dark:" plus the surface it sits on
 	local function toneFor( surface )
 
 		if not GRISTLE.Settings.textContrast or surface == nil then
@@ -844,10 +843,10 @@ function GRISTLE.Bar.New( root, options )
 
 		if surface ~= nil then
 			label:SetForeColor( GRISTLE.Color( settings.colorTextDark ) )
-			label:SetOutlineColor( GRISTLE.Color( surface ) )
+			label:SetOutlineColor( GRISTLE.InvertColor( settings.colorTextDark ) )
 		else
 			label:SetForeColor( GRISTLE.Color( settings.colorText ) )
-			label:SetOutlineColor( Turbine.UI.Color.Black )
+			label:SetOutlineColor( GRISTLE.InvertColor( settings.colorText ) )
 		end
 
 		-- a label's colour is not guaranteed to repaint until its text is set again

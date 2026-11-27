@@ -99,12 +99,16 @@ end
 --   get     read the displayed value from somewhere else   ( window positions are stored as screen
 --                                                             ratios but have to be shown in pixels )
 --   nudge   handle the - / + press entirely, given a direction, and do its own saving
+--   display render the value as text instead of as a number   ( the font family is a name )
+--
+-- valueWidth widens the box between the buttons, for a value that is a word rather than a number.
 ---------------------------------------------------------------------------------------------------
 local function Stepper( parent, label, left, top, options )
 
 	TextLabel( parent, label, left, top, options.labelWidth or 150 )
 
 	local valueLeft = left + ( options.labelWidth or 150 )
+	local valueWidth = options.valueWidth or 56
 
 	local minus = Turbine.UI.Lotro.Button()
 	minus:SetParent( parent )
@@ -115,19 +119,24 @@ local function Stepper( parent, label, left, top, options )
 	local value = Turbine.UI.Label()
 	value:SetParent( parent )
 	value:SetPosition( valueLeft + 26, top )
-	value:SetSize( 56, 20 )
+	value:SetSize( valueWidth, 20 )
 	value:SetTextAlignment( Turbine.UI.ContentAlignment.MiddleCenter )
 	value:SetFont( FONT_SMALL )
 
 	local plus = Turbine.UI.Lotro.Button()
 	plus:SetParent( parent )
-	plus:SetPosition( valueLeft + 84, top )
+	plus:SetPosition( valueLeft + valueWidth + 28, top )
 	plus:SetSize( 24, 20 )
 	plus:SetText( "+" )
 
 	local decimals = options.decimals or 0
 
 	local function render()
+
+		if options.display ~= nil then
+			value:SetText( options.display() )
+			return
+		end
 
 		local current
 
@@ -591,7 +600,7 @@ function GRISTLE.CreateOptionsPanel()
 	-- /gristle format for the rest.
 	-----------------------------------------------------------------------------------------------
 	do
-		local row = Row( 344 )
+		local row = Row( 368 )
 
 		SectionLabel( row, "READOUTS" )
 
@@ -619,15 +628,34 @@ function GRISTLE.CreateOptionsPanel()
 				GRISTLE.ApplyFormats()
 			end )
 
-		CheckBox( row, "Bold the bar readouts - bold comes in size 16 only", MARGIN, 246, "boldValue" )
+		CheckBox( row, "Bold the bar readouts - Trajan Pro and Book Antiqua only", MARGIN, 246, "boldValue" )
 
-		Stepper( row, "First box size",  MARGIN, 272, { key = "fontSize",        min = 8, max = 23, step = 2 } )
-		Stepper( row, "Second box size", MARGIN, 296, { key = "percentFontSize", min = 8, max = 23, step = 2 } )
-		Stepper( row, "Name row size",   MARGIN, 320, { key = "nameFontSize",    min = 8, max = 23, step = 2 } )
+		-- cycles through GRISTLE.FontFamilies rather than offering a list: the panel has no dropdown,
+		-- and there are only a handful of families
+		Stepper( row, "Font", MARGIN, 272, {
+			labelWidth = 60,
+			valueWidth = 112,
+			display = function()
+				local family = GRISTLE.FindFontFamily( GRISTLE.Settings.fontFamily )
+				return family ~= nil and family.label or "?"
+			end,
+			nudge = function( direction )
+				local families = GRISTLE.FontFamilies
+				local _, index = GRISTLE.FindFontFamily( GRISTLE.Settings.fontFamily )
+				index = ( ( ( index or 1 ) - 1 + direction ) % #families ) + 1
+				GRISTLE.Settings.fontFamily = families[ index ].key
+				GRISTLE.Save()
+			end,
+		} )
 
+		Stepper( row, "First box size",  MARGIN, 296, { key = "fontSize",        min = 8, max = 23, step = 2 } )
+		Stepper( row, "Second box size", MARGIN, 320, { key = "percentFontSize", min = 8, max = 23, step = 2 } )
+		Stepper( row, "Name row size",   MARGIN, 344, { key = "nameFontSize",    min = 8, max = 23, step = 2 } )
+
+		TextLabel( row, "one font for the name row and both readouts", HINT_LEFT, 272, HINT_WIDTH )
 		TextLabel( row, "and from the right on the target, name row and readouts alike",
-			HINT_LEFT, 272, HINT_WIDTH )
-		TextLabel( row, "the name row's height follows its own size", HINT_LEFT, 320, HINT_WIDTH )
+			HINT_LEFT, 296, HINT_WIDTH )
+		TextLabel( row, "the name row's height follows its own size", HINT_LEFT, 344, HINT_WIDTH )
 
 		list:AddItem( row )
 	end

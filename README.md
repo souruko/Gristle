@@ -204,4 +204,4 @@ checks every entry resolves, so the documentation cannot drift from the code.
 
 ## Version
 
-**1.3.0** — see CHANGELOG.md.
+**1.4.0** — see CHANGELOG.md.

@@ -3,7 +3,7 @@
 	<Information>
 		<Name>Gristle</Name>
 		<Author>Souru</Author>
-		<Version>1.3.0</Version>
+		<Version>1.4.0</Version>
 		<Description>Replacement morale and power bars for the player and the current target. Pair with the EffectsOnly skin, which hides the stock frames but keeps the effect icons.</Description>
 	</Information>
 	<Package>Gristle.Main</Package>

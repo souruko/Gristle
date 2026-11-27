@@ -8,7 +8,7 @@
 
 GRISTLE = {}
 
-GRISTLE.Version = "1.3.0"
+GRISTLE.Version = "1.4.0"
 
 LOCALPLAYER = Turbine.Gameplay.LocalPlayer:GetInstance()
 
@@ -21,58 +21,92 @@ GRISTLE.ScreenWidth, GRISTLE.ScreenHeight = Turbine.UI.Display:GetSize()
 ---------------------------------------------------------------------------------------------------
 -- fonts
 ---------------------------------------------------------------------------------------------------
--- the API only exposes specific name+size pairs, and the sizes Verdana actually ships are
--- irregular, so they are listed rather than computed. Verdana is the clearest of the families at
--- small sizes; VerdanaBold exists at 16 only, which is why 16 is the default for the big number,
--- and why a bold readout is always drawn at 16 whatever its size setting says.
+-- The API only exposes specific name+size pairs, and the sizes each family ships are irregular, so
+-- they are listed rather than computed. One family is used for every label Gristle draws - the name
+-- row and both readouts - chosen by Settings.fontFamily. A size that family does not ship resolves
+-- to its nearest one, so a size coming out of a savefile or a family switch can never index nil.
+--
+-- Bold is a separate face with its own, much shorter, size list. Bold wins over the size: a bold
+-- readout takes the nearest bold size rather than quietly coming out regular, which is how the
+-- percentage once ended up visibly thinner than the number beside it. A family with no bold face
+-- ignores the bold setting.
+--
+-- Verdana is deliberately listed without one. Its only bold, VerdanaBold16, is the one face in the
+-- game that ignores FontStyle.Outline - confirmed in game 2026-11-27 against every face below, all of
+-- which outline - and an unoutlined readout is unreadable over a bright fill. Regular Verdana wins.
 ---------------------------------------------------------------------------------------------------
 
-GRISTLE.FontSizes = { 10, 12, 14, 16, 18, 20, 22, 23 }
+local function FontTable( prefix, sizes )
 
-GRISTLE.Font = {
-	[10] = Turbine.UI.Lotro.Font.Verdana10,
-	[12] = Turbine.UI.Lotro.Font.Verdana12,
-	[14] = Turbine.UI.Lotro.Font.Verdana14,
-	[16] = Turbine.UI.Lotro.Font.Verdana16,
-	[18] = Turbine.UI.Lotro.Font.Verdana18,
-	[20] = Turbine.UI.Lotro.Font.Verdana20,
-	[22] = Turbine.UI.Lotro.Font.Verdana22,
-	[23] = Turbine.UI.Lotro.Font.Verdana23,
+	local fonts = {}
+
+	for i = 1, #sizes do
+		fonts[ sizes[i] ] = Turbine.UI.Lotro.Font[ prefix .. sizes[i] ]
+	end
+
+	return { prefix = prefix, sizes = sizes, fonts = fonts }
+
+end
+
+-- in the order the options panel cycles through them
+GRISTLE.FontFamilies = {
+	{ key = "Verdana",       label = "Verdana",
+	  regular = FontTable( "Verdana",          { 10, 12, 14, 16, 18, 20, 22, 23 } ) },
+	{ key = "TrajanPro",     label = "Trajan Pro",
+	  regular = FontTable( "TrajanPro",        { 13, 14, 15, 16, 18, 19, 20, 21, 23, 24, 25, 26, 28 } ),
+	  bold    = FontTable( "TrajanProBold",    { 16, 22, 24, 25, 30, 36 } ) },
+	{ key = "BookAntiqua",   label = "Book Antiqua",
+	  regular = FontTable( "BookAntiqua",      { 12, 14, 16, 18, 20, 22, 24, 26, 28, 32, 36 } ),
+	  bold    = FontTable( "BookAntiquaBold",  { 12, 14, 18, 19, 22, 24 } ) },
+	{ key = "Arial",         label = "Arial",
+	  regular = FontTable( "Arial",            { 12 } ) },
+	{ key = "LucidaConsole", label = "Lucida Console",
+	  regular = FontTable( "LucidaConsole",    { 12 } ) },
+	{ key = "FixedSys",      label = "Fixedsys",
+	  regular = FontTable( "FixedSys",         { 15 } ) },
 }
 
-GRISTLE.FontBold = {
-	[16] = Turbine.UI.Lotro.Font.VerdanaBold16,
-}
+GRISTLE.DefaultFontFamily = "Verdana"
 
--- nearest available size, so a size coming out of a savefile or a resize can never index nil
-function GRISTLE.ResolveFont( size, bold )
+-- the family table for a key, or nil when the key names no family
+function GRISTLE.FindFontFamily( key )
 
-	if bold and GRISTLE.FontBold[ size ] ~= nil then
-		return GRISTLE.FontBold[ size ]
-	end
-
-	-- Verdana's only bold is 16, so a bold readout at any other size would quietly come out regular
-	-- - which is how the percentage ended up visibly thinner than the number beside it. Bold wins
-	-- over the size: a 14 or an 18 asked for in bold gets the 16.
-	if bold and GRISTLE.FontBold[ 16 ] ~= nil then
-		return GRISTLE.FontBold[ 16 ]
-	end
-
-	if GRISTLE.Font[ size ] ~= nil then
-		return GRISTLE.Font[ size ]
-	end
-
-	local best, bestDistance = 14, 1000
-
-	for i = 1, #GRISTLE.FontSizes do
-		local candidate = GRISTLE.FontSizes[i]
-		local distance = math.abs( candidate - ( tonumber( size ) or 14 ) )
-		if distance < bestDistance then
-			best, bestDistance = candidate, distance
+	for i = 1, #GRISTLE.FontFamilies do
+		if GRISTLE.FontFamilies[i].key == key then
+			return GRISTLE.FontFamilies[i], i
 		end
 	end
 
-	return GRISTLE.Font[ best ]
+	return nil
+
+end
+
+local function nearestSize( sizes, size )
+
+	local best, bestDistance = sizes[1], 1000
+
+	for i = 1, #sizes do
+		local distance = math.abs( sizes[i] - size )
+		if distance < bestDistance then
+			best, bestDistance = sizes[i], distance
+		end
+	end
+
+	return best
+
+end
+
+function GRISTLE.ResolveFont( size, bold )
+
+	local settings = GRISTLE.Settings
+	local family = GRISTLE.FindFontFamily( settings and settings.fontFamily )
+		or GRISTLE.FindFontFamily( GRISTLE.DefaultFontFamily )
+
+	size = tonumber( size ) or 14
+
+	local face = ( bold and family.bold ~= nil ) and family.bold or family.regular
+
+	return face.fonts[ nearestSize( face.sizes, size ) ]
 
 end
 
@@ -270,6 +304,7 @@ GRISTLE.Defaults = {
 	percentFontSize   = 14,
 	nameFontSize      = 14,
 	boldValue         = true,
+	fontFamily        = "Verdana",
 
 	-- which end of the bar the name sits at is not a setting: it is fixed per frame, the player's
 	-- reading inward from the left and the target's inward from the right. See NameRow.

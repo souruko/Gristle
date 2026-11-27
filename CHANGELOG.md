@@ -2,6 +2,24 @@
 
 All notable changes to Gristle will be documented here.
 
+## [1.4.0] — 2026-11-27
+
+### Added
+
+- **Pick your font.** A new Font setting under Readouts switches every piece of text on the bars -
+  your name, your level and both numbers - between Verdana, Trajan Pro, Book Antiqua, Arial, Lucida
+  Console and Fixedsys. Your sizes are kept; if a font doesn't come in the size you chose, the
+  nearest one it has is used. Book Antiqua runs noticeably smaller than the others at the same
+  number, so you may want to turn its sizes up.
+
+### Fixed
+
+- **The numbers on the morale bar have their outline back.** With bold switched on, the readouts
+  were drawn in a bold Verdana the game never outlines, so they had no dark edge and were hard to
+  read on a bright bar. Verdana readouts are now always drawn in regular weight, which keeps the
+  outline. If you want bold numbers, pick Trajan Pro or Book Antiqua - both have bold versions that
+  keep the outline.
+
 ## [1.3.0] — 2026-11-21
 
 ### Added

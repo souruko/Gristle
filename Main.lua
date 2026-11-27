@@ -277,6 +277,12 @@ function GRISTLE.NormaliseSettings()
 	settings.percentFontSize = clamp( settings.percentFontSize, 8, 23, GRISTLE.Defaults.percentFontSize )
 	settings.nameFontSize    = clamp( settings.nameFontSize,    8, 23, GRISTLE.Defaults.nameFontSize )
 
+	-- a family this version does not know (a typo, or a savefile from a newer one) falls back rather
+	-- than leaving every label without a font
+	if GRISTLE.FindFontFamily( settings.fontFamily ) == nil then
+		settings.fontFamily = GRISTLE.Defaults.fontFamily
+	end
+
 	-- readout templates. An empty one is valid and means "nothing in this slot", so these are
 	-- coerced and capped rather than defaulted: falling back on a blank would silently undo the one
 	-- way of switching a readout off.
